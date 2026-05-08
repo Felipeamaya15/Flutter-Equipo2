@@ -25,20 +25,34 @@ La organización de carpetas en `lib/` es la siguiente:
 
 ---
 
-## 🛠️ Stack Tecnológico
-* **Framework:** Flutter (Channel Stable).
-* **Red:** Dio / Http con interceptores para manejo de tokens.
-* **Calidad:** Reglas estrictas de linter en `analysis_options.yaml`.
-* **Gestión:** Jira (Metodología Scrum).
+🛠️ Stack Tecnológico
+Framework: Flutter (Channel Stable).
 
----
+Backend: Firebase (Auth, Firestore, Cloud Functions).
 
-## 🚦 Flujo de Git (Reglas del Encargado)
-Para mantener el orden en el repositorio, todos los miembros deben seguir estas normas:
+Red: Dio / Http con interceptores para manejo de tokens.
 
-1.  **Ramas:** Prohibido hacer push directo a `main`.
-2.  **Naming:** Las ramas deben seguir el formato `feature/nombre-de-la-tarea`.
-3.  **Pull Requests (PR):** Todo cambio debe pasar por una revisión de código (Code Review) y cumplir con el *Definition of Done* (linter aprobado y compilación exitosa).
+Calidad: Reglas estrictas de linter en analysis_options.yaml.
+
+Gestión: Jira (Metodología Scrum).
+
+🚦 Flujo de Git & Entornos
+Para garantizar la estabilidad del producto, el equipo trabajará bajo un esquema de tres ramas principales que segmentan el ciclo de vida del desarrollo:
+
+dev (Desarrollo): Rama base para los desarrolladores. Aquí se integran las nuevas funcionalidades (feature/*) una vez terminadas. Es un entorno de integración continua.
+
+qa (Testing): Rama destinada exclusivamente al equipo de QA. Una vez que una versión en dev es estable, se despliega a esta rama para pruebas de regresión, estrés y validación de historias de usuario.
+
+main (Producción): Contiene únicamente código que ha sido aprobado por QA. Es la versión oficial y estable de la aplicación lista para distribución.
+
+Reglas del Encargado:
+Prohibido: Hacer push directo a main o qa.
+
+Naming: Las ramas temporales deben seguir el formato feature/nombre-de-la-tarea.
+
+Pull Requests (PR): Todo cambio debe pasar por una revisión de código (Code Review) y cumplir con el Definition of Done (linter aprobado y compilación exitosa).
+
+Promoción de Código: El paso de dev a qa y de qa a main requiere la aprobación formal del encargado y el equipo de calidad.
 
 ---
 
