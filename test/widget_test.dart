@@ -16,10 +16,14 @@ void main() {
 
   testWidgets('valida campos obligatorios del formulario', (tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Enviar solicitud'));
-    await tester.tap(find.text('Enviar solicitud'));
-    await tester.pump();
+    final submit = find.text('Enviar solicitud');
+    final mainScroll = find.ancestor(of: submit, matching: find.byType(Scrollable));
+    await tester.scrollUntilVisible(submit, 200, scrollable: mainScroll);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
 
     expect(find.text('Ingresa tu nombre completo'), findsOneWidget);
     expect(find.text('El correo ingresado no es valido'), findsOneWidget);
@@ -29,11 +33,14 @@ void main() {
 
   testWidgets('actualiza el estimador cuando cambia invitados', (tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
     final guestsField = find.widgetWithText(TextFormField, 'Numero de invitados');
-    await tester.ensureVisible(guestsField);
+    final mainScroll = find.ancestor(of: guestsField, matching: find.byType(Scrollable));
+    await tester.scrollUntilVisible(guestsField, 200, scrollable: mainScroll);
+    await tester.pumpAndSettle();
     await tester.enterText(guestsField, '80');
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('80 invitados - Evento Corporativo'), findsOneWidget);
     expect(find.text(r'$1160000'), findsOneWidget);
