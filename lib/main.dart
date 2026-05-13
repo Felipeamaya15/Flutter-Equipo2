@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'screens/propuesta_valor.dart';
+//import 'screens/propuesta_valor.dart';
 import 'screens/solicitud_form_screen.dart';
 
 void main() {
