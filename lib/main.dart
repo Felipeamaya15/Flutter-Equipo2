@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; 
 import 'core/theme/app_theme.dart';
-//import 'screens/propuesta_valor.dart';
 import 'screens/solicitud_form_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ); 
+
   runApp(const ProductoraApp());
 }
 
@@ -16,10 +23,7 @@ class ProductoraApp extends StatelessWidget {
       title: 'Productora Intercultural SpA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // Llamada directa a la pantalla de la sección (PRUEBA DEMO REEMPLAZAR POR LA SECCION HOME)
-      //home: const PropuestaValorScreen(),
-      home: SolicitudForm(),
-
+      home: SolicitudForm(), 
     );
   }
 }
