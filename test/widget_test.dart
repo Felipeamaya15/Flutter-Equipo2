@@ -4,45 +4,42 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_equipo2/main.dart';
 
 void main() {
-  testWidgets('muestra avances principales de UX/UI sprint 1', (tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('muestra el dashboard principal del trabajador', (tester) async {
+    await tester.pumpWidget(const ProductoraApp());
+    await tester.pumpAndSettle();
 
-    expect(find.text('Sabores Interculturales'), findsOneWidget);
-    expect(find.text('Sprint 1 UX/UI en avance'), findsOneWidget);
-    expect(find.text('Catalogo visual de servicios'), findsOneWidget);
-    expect(find.text('Formulario de cotizacion'), findsOneWidget);
-    expect(find.text('Precio estimado'), findsOneWidget);
+    expect(find.text('Panel trabajador'), findsWidgets);
+    expect(find.text('Solicitudes activas'), findsOneWidget);
+    expect(find.text('Eventos de la semana'), findsOneWidget);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Prioridades operativas'), findsOneWidget);
+    expect(find.text('Agenda de hoy'), findsOneWidget);
   });
 
-  testWidgets('valida campos obligatorios del formulario', (tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('permite abrir el formulario desde nueva solicitud', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ProductoraApp());
     await tester.pumpAndSettle();
 
-    final submit = find.text('Enviar solicitud');
-    final mainScroll = find.ancestor(of: submit, matching: find.byType(Scrollable));
-    await tester.scrollUntilVisible(submit, 200, scrollable: mainScroll);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Nueva solicitud').first,
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Ingresa tu nombre completo'), findsOneWidget);
-    expect(find.text('El correo ingresado no es valido'), findsOneWidget);
-    expect(find.text('Ingresa un telefono de 9 digitos'), findsOneWidget);
-    expect(find.text('Por favor selecciona la fecha de tu evento'), findsOneWidget);
+    expect(find.textContaining('Solicitud de'), findsOneWidget);
+    expect(find.text('Enviar solicitud'), findsOneWidget);
   });
 
-  testWidgets('actualiza el estimador cuando cambia invitados', (tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('aplica controles e iconografia del dashboard', (tester) async {
+    await tester.pumpWidget(const ProductoraApp());
     await tester.pumpAndSettle();
 
-    final guestsField = find.widgetWithText(TextFormField, 'Numero de invitados');
-    final mainScroll = find.ancestor(of: guestsField, matching: find.byType(Scrollable));
-    await tester.scrollUntilVisible(guestsField, 200, scrollable: mainScroll);
-    await tester.pumpAndSettle();
-    await tester.enterText(guestsField, '80');
-    await tester.pumpAndSettle();
-
-    expect(find.text('80 invitados - Evento Corporativo'), findsOneWidget);
-    expect(find.text(r'$1160000'), findsOneWidget);
+    expect(find.byIcon(Icons.assignment_outlined), findsWidgets);
+    expect(find.byIcon(Icons.event_available_outlined), findsOneWidget);
+    expect(find.text('Reporte'), findsOneWidget);
   });
 }
