@@ -7,14 +7,12 @@ class PropuestaValorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F6), 
-      // AQUI VA A IR EL MENUUUUUUUUUUUUUUU
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             children: [
               const SizedBox(height: 32), 
-              
               Center(
                 child: Image.asset(
                   'assets/images/logo_sobre_nosotros.png',
@@ -22,9 +20,7 @@ class PropuestaValorScreen extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
               ),
-              
               const SizedBox(height: 16),
-              
               Text(
                 'Nuestra Propuesta\nIntercultural',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
@@ -34,9 +30,7 @@ class PropuestaValorScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
               const SizedBox(height: 32),
-              
               Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
@@ -44,7 +38,7 @@ class PropuestaValorScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 24,
                       offset: const Offset(0, 8),
                     ),
@@ -60,9 +54,7 @@ class PropuestaValorScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
-              
               const SizedBox(height: 40),
-
               Text(
                 'Respaldados por la Excelencia',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -72,20 +64,18 @@ class PropuestaValorScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
               const SizedBox(height: 24),
-              
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFF4A6B22).withOpacity(0.15),
+                    color: const Color(0xFF4A6B22).withValues(alpha: 0.15),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -141,7 +131,6 @@ class PropuestaValorScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
               const SizedBox(height: 48),
             ],
           ),
@@ -151,7 +140,6 @@ class PropuestaValorScreen extends StatelessWidget {
   }
 }
 
-// PANTALLA PARA VER EL DIPLOMA 
 class VisorDiplomaScreen extends StatelessWidget {
   const VisorDiplomaScreen({super.key});
 
