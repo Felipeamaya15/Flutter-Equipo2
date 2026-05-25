@@ -27,7 +27,8 @@ class ProductoraApp extends StatelessWidget {
         useMaterial3: true,
       ),
       
-      initialRoute: AppRoutes.login, 
+      initialRoute: AppRoutes.root, 
+      
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }
