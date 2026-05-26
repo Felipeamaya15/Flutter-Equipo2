@@ -132,13 +132,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
               _buildHeader('Panel trabajador', 'Gestión diaria de solicitudes, eventos y tareas del equipo.'),
               OutlinedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Generando reporte... (Función en desarrollo)'),
-                      backgroundColor: primaryColor,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, AppRoutes.report);  
                 },
                 icon: const Icon(Icons.analytics_outlined, size: 18),
                 label: const Text('Reporte', style: TextStyle(fontSize: 16)),
@@ -199,76 +193,67 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     );
   }
 
-  Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
-    final activasDocs = docs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final String estado = (data['estado'] ?? '').toString().trim().toLowerCase();
-      return estado != 'completado';
-    }).toList();
+Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
+  final solicitudesAbiertas = docs.where((doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
+  
+    return estado != 'completado';
+  }).toList();
 
-    return _buildDashboardBlock(
-      title: 'Prioridades operativas',
-      icon: Icons.check_circle_outline_rounded,
-      child: activasDocs.isEmpty
-          ? const Padding(padding: EdgeInsets.all(16.0), child: Text('No hay solicitudes activas registradas.', style: TextStyle(fontSize: 16)))
-          : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: activasDocs.length > 3 ? 3 : activasDocs.length,
-              itemBuilder: (context, index) {
-                final data = activasDocs[index].data() as Map<String, dynamic>;
-                final docId = activasDocs[index].id;
-                final String usuarioAsignado = data['usuarioAsignado'] ?? 'Sin asignar';
-                final String emailCliente = data['email'] ?? 'Sin correo';
-                
-                // LEEMOS EL ESTADO REAL PARA MOSTRARLO
-                final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim();
-                String estadoReal = 'Pendiente';
-                if (estadoRaw.toLowerCase() == 'en proceso' || estadoRaw.toLowerCase() == 'en_proceso') {
-                  estadoReal = 'En proceso';
-                }
-                
-                final String rawTipo = data['tipoEvento'] ?? data['tipo_evento'] ?? '';
-                final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Catering para $emailCliente';
 
-                bool sinAsignar = usuarioAsignado.trim().toLowerCase() == 'sin asignar' || usuarioAsignado.trim().isEmpty;
+  solicitudesAbiertas.sort((a, b) {
+    final dataA = a.data() as Map<String, dynamic>;
+    final dataB = b.data() as Map<String, dynamic>;
+    final Timestamp fechaA = dataA['creado_en'] ?? Timestamp.now();
+    final Timestamp fechaB = dataB['creado_en'] ?? Timestamp.now();
 
-                // ASIGNAMOS LA ETIQUETA BASADA EN EL ESTADO REAL
-                String etiqueta = sinAsignar ? 'Por Tomar' : estadoReal;
-                Color colorEtiqueta = sinAsignar ? Colors.orange : (estadoReal == 'En proceso' ? Colors.blue : Colors.teal);
+    return fechaA.compareTo(fechaB);
+  });
 
-                return _buildPriorityItem(
-                  title: tipoCatering,
-                  subtitle: 'Cliente: $emailCliente',
-                  tag: etiqueta,
-                  tagColor: colorEtiqueta,
-                  trailingAction: sinAsignar
-                      ? TextButton(
-                          onPressed: () async {
-                            try {
-                              await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({
-                                'usuarioAsignado': 'Coordinador General',
-                                'estado': 'En proceso'
-                              });
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('¡Tarea tomada con éxito!'), backgroundColor: Colors.green),
-                              );
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error al actualizar: $e'), backgroundColor: Colors.red),
-                              );
-                            }
-                          },
-                          child: const Text('Tomar', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-                        )
-                      : const Icon(Icons.check, color: Colors.green),
-                );
-              },
+  return _buildDashboardBlock(
+    title: 'Prioridades operativas',
+    icon: Icons.check_circle_outline_rounded,
+    child: solicitudesAbiertas.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                '¡Excelente! Todas las solicitudes están completadas.',
+                style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
+              ),
             ),
-    );
-  }
+          )
+        : ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: solicitudesAbiertas.length > 3 ? 3 : solicitudesAbiertas.length,
+            itemBuilder: (context, index) {
+              final data = solicitudesAbiertas[index].data() as Map<String, dynamic>;
+              final docId = solicitudesAbiertas[index].id;
+              final String emailCliente = data['email'] ?? 'Sin correo';
+              final String rawTipo = data['tipoEvento'] ?? data['tipo_evento'] ?? '';
+              final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Catering para $emailCliente';
+              final Timestamp creadoEn = data['creado_en'] ?? Timestamp.now();
+              final DateTime fechaCreacion = creadoEn.toDate();
+              final Duration tiempoEspera = DateTime.now().difference(fechaCreacion);
+              bool esMuyAntigua = tiempoEspera.inHours >= 24;
+              final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim();
+              String etiqueta = estadoRaw.toLowerCase() == 'en proceso' || estadoRaw.toLowerCase() == 'en_proceso' ? 'En proceso' : 'Pendiente';
+
+              return _buildPriorityItem(
+                title: tipoCatering,
+                subtitle: esMuyAntigua 
+                    ? '⚠️ Tiempo de asignación excedido' 
+                    : 'Cliente: $emailCliente',
+                tag: esMuyAntigua ? 'ALTA' : etiqueta,
+                tagColor: esMuyAntigua ? Colors.redAccent : (etiqueta == 'En proceso' ? Colors.blue : Colors.orange),
+                trailingAction: const SizedBox.shrink(),
+              );
+            },
+          ),
+  );
+}
 
   Widget _buildAgendaHoyBlock() {
     return _buildDashboardBlock(
