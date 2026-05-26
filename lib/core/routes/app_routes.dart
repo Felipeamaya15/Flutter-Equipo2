@@ -4,13 +4,11 @@ import 'package:flutter_equipo2/features/solicitudes/presentation/pages/login_pa
 import 'package:flutter_equipo2/features/solicitudes/presentation/pages/solicitud_form_page.dart';
 import 'package:flutter_equipo2/features/solicitudes/presentation/pages/confirmation_page.dart';
 import 'package:flutter_equipo2/features/dashboard/presentacion/pages/worker_dashboard_page.dart';
-import 'package:flutter_equipo2/features/dashboard/presentacion/pages/report_page.dart';
 
 class AppRoutes {
   static const String root = '/'; 
   static const String login = '/login';
   static const String dashboard = '/dashboard';
-  static const String report = '/report';
   static const String solicitudForm = '/solicitud-form';
   static const String confirmation = '/confirmation';
 
@@ -22,8 +20,6 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const LoginPage());
       case dashboard:
         return MaterialPageRoute(builder: (_) => const WorkerDashboardPage());
-      case report:
-        return MaterialPageRoute(builder: (_) => const ReportPage());
       case solicitudForm:
         return MaterialPageRoute(builder: (_) => const SolicitudFormPage());
       case confirmation:
