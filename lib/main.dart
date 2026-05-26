@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
+import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +12,14 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const ProductoraApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SolicitudesProvider()),
+      ],
+      child: const ProductoraApp(),
+    ),
+  );
 }
 
 class ProductoraApp extends StatelessWidget {
@@ -26,9 +35,7 @@ class ProductoraApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFAF9F6),
         useMaterial3: true,
       ),
-      
       initialRoute: AppRoutes.root, 
-      
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }
