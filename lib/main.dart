@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
+import 'package:provider/provider.dart';
+import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +12,14 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const ProductoraApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ReportViewModel()),
+      ],
+      child: const ProductoraApp(),
+    ),
+  );
 }
 
 class ProductoraApp extends StatelessWidget {
