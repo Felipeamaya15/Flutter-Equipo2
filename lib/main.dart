@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
+import 'package:provider/provider.dart';
+import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
 import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
 
 Future<void> main() async {
@@ -15,6 +17,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ReportViewModel()),
         ChangeNotifierProvider(create: (_) => SolicitudesProvider()),
       ],
       child: const ProductoraApp(),
