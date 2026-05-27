@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
 import 'package:provider/provider.dart';
 import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
+import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +18,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
+        ChangeNotifierProvider(create: (_) => SolicitudesProvider()),
       ],
       child: const ProductoraApp(),
     ),
@@ -35,9 +38,7 @@ class ProductoraApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFAF9F6),
         useMaterial3: true,
       ),
-      
       initialRoute: AppRoutes.root, 
-      
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

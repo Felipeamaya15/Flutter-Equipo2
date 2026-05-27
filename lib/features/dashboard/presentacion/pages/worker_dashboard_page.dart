@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../providers/solicitudes_provider.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -53,17 +55,16 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Agenda'),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('solicitudes').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
+      body: Consumer<SolicitudesProvider>(
+        builder: (context, provider, child) {
+          if (provider.error != null) {
             return const Center(child: Text('Error crítico de red al conectar con Cloud Firestore.'));
           }
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator(color: primaryColor));
           }
 
-          final List<QueryDocumentSnapshot> solicitudes = snapshot.data?.docs ?? [];
+          final List<QueryDocumentSnapshot> solicitudes = provider.solicitudes;
           final bool isMobile = MediaQuery.of(context).size.width < 800; 
           final double paddingValue = isMobile ? 16.0 : 32.0;
 
@@ -83,7 +84,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   }
 
   Widget _buildDashboardTab(List<QueryDocumentSnapshot> docs, bool isMobile, double paddingValue) {
-    
     int solicitudesActivas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
@@ -328,7 +328,7 @@ Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
                                 onChanged: (nuevoEstado) async {
                                   if (nuevoEstado != null) {
                                     try {
-                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': nuevoEstado});
+                                      await Provider.of<SolicitudesProvider>(context, listen: false).actualizarEstado(docId, nuevoEstado);
                                       if (!mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('Estado actualizado correctamente'), backgroundColor: Colors.green),
