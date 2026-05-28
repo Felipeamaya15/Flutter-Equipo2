@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../providers/solicitudes_provider.dart';
+import 'generar_reporte_dialog.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -17,6 +17,106 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   static const Color primaryColor = Color(0xFF4A4B22);
   static const Color backgroundColor = Color(0xFFFAF9F6);
 
+  Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
+    final data = doc.data() as Map<String, dynamic>;
+    final docId = doc.id;
+    final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
+    final String usuarioAsignado = data['usuarioAsignado'] ?? 'Sin asignar';
+    final String email = data['email'] ?? 'No registrado';
+    final String phone = data['phone'] ?? 'No registrado';
+
+    final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
+    String estadoValido = 'Pendiente';
+    if (estadoRaw == 'en proceso' || estadoRaw == 'en_proceso') estadoValido = 'En proceso';
+    else if (estadoRaw == 'completado') estadoValido = 'Completado';
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool compact = constraints.maxWidth < 560;
+
+            final Widget estadoSelector = SizedBox(
+              width: compact ? double.infinity : 170,
+              child: DropdownButtonFormField<String>(
+                value: estadoValido,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Pendiente', child: Text('Pendiente')),
+                  DropdownMenuItem(value: 'En proceso', child: Text('En proceso')),
+                  DropdownMenuItem(value: 'Completado', child: Text('Completado')),
+                ],
+                onChanged: (nuevoEstado) async {
+                  if (nuevoEstado != null) {
+                    try {
+                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': nuevoEstado});
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Estado actualizado correctamente'), backgroundColor: Colors.green),
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al cambiar estado: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+              ),
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Folio: #$folio', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                  const SizedBox(height: 8),
+                  Text('Cliente: $email', style: const TextStyle(fontSize: 16), overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text('Teléfono: $phone', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 4),
+                  Text('Encargado: $usuarioAsignado', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+                  const SizedBox(height: 16),
+                  estadoSelector,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Folio: #$folio', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                      const SizedBox(height: 6),
+                      Text('Cliente: $email', style: const TextStyle(fontSize: 16), overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text('Teléfono: $phone', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                      const SizedBox(height: 10),
+                      Text('Encargado: $usuarioAsignado', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                estadoSelector,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,16 +232,19 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
               _buildHeader('Panel trabajador', 'Gestión diaria de solicitudes, eventos y tareas del equipo.'),
               OutlinedButton.icon(
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.report);  
-                },
-                icon: const Icon(Icons.analytics_outlined, size: 18),
-                label: const Text('Reporte', style: TextStyle(fontSize: 16)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: primaryColor,
-                  side: const BorderSide(color: primaryColor),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                ),
-              ),
+      showDialog(
+        context: context,
+        builder: (context) => GenerarReporteDialog(),
+      );
+    },
+    icon: const Icon(Icons.analytics_outlined, size: 18),
+    label: const Text('Reporte', style: TextStyle(fontSize: 16)),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: primaryColor,
+      side: const BorderSide(color: primaryColor),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    ),
+  ),
             ],
           ),
           const SizedBox(height: 32),
@@ -280,71 +383,33 @@ Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
           Expanded(
             child: docs.isEmpty
                 ? const Center(child: Text('No existen solicitudes registradas.', style: TextStyle(fontSize: 16)))
-                : ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final data = docs[index].data() as Map<String, dynamic>;
-                      final docId = docs[index].id;
-                      final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
-                      final String usuarioAsignado = data['usuarioAsignado'] ?? 'Sin asignar';
-                      final String email = data['email'] ?? 'No registrado';
-                      final String phone = data['phone'] ?? 'No registrado';
-
-                      final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-                      String estadoValido = 'Pendiente';
-                      if (estadoRaw == 'en proceso' || estadoRaw == 'en_proceso') estadoValido = 'En proceso';
-                      else if (estadoRaw == 'completado') estadoValido = 'Completado';
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        color: Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Folio: #$folio', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
-                                    const SizedBox(height: 6),
-                                    Text('Cliente: $email', style: const TextStyle(fontSize: 16), overflow: TextOverflow.ellipsis),
-                                    Text('Teléfono: $phone', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                                    const SizedBox(height: 4),
-                                    Text('Encargado: $usuarioAsignado', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              DropdownButton<String>(
-                                value: estadoValido, 
-                                items: const [
-                                  DropdownMenuItem(value: 'Pendiente', child: Text('Pendiente')),
-                                  DropdownMenuItem(value: 'En proceso', child: Text('En proceso')),
-                                  DropdownMenuItem(value: 'Completado', child: Text('Completado')),
-                                ],
-                                onChanged: (nuevoEstado) async {
-                                  if (nuevoEstado != null) {
-                                    try {
-                                      await Provider.of<SolicitudesProvider>(context, listen: false).actualizarEstado(docId, nuevoEstado);
-                                      if (!mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Estado actualizado correctamente'), backgroundColor: Colors.green),
-                                      );
-                                    } catch (e) {
-                                      if (!mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Error al cambiar estado: $e'), backgroundColor: Colors.red),
-                                      );
-                                    }
-                                  }
-                                },
-                              )
-                            ],
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 820) {
+                        return GridView.builder(
+                          padding: EdgeInsets.zero,
+                          physics: const BouncingScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 450,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 2.3,
                           ),
-                        ),
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            return _buildSolicitudCard(docs[index], context);
+                          },
+                        );
+                      }
+
+                      return ListView.separated(
+                        padding: EdgeInsets.zero,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: docs.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          return _buildSolicitudCard(docs[index], context);
+                        },
                       );
                     },
                   ),
