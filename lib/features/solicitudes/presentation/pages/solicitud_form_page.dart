@@ -1,10 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
-
-import '../../data/datasources/solicitud_remote_datasource.dart';
-import '../../data/repositories/solicitud_repository_impl.dart';
-import '../../domain/entities/solicitud.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
+import '../../../../core/routes/app_routes.dart';
 import '../widgets/reusable_solicitud_form.dart';
 
 class SolicitudFormPage extends StatefulWidget {
@@ -17,68 +14,64 @@ class SolicitudFormPage extends StatefulWidget {
 class _SolicitudFormPageState extends State<SolicitudFormPage> {
   bool _isSubmitting = false;
 
-  Future<void> _saveToFirebase(
-    String email,
-    String phone,
-    DateTime date,
-  ) async {
-    setState(() {
-      _isSubmitting = true;
-    });
+  Future<void> _handleFormSubmit(String email, String phone, DateTime date) async {
+    setState(() => _isSubmitting = true);
 
     try {
-      final id = const Uuid().v4();
 
-      final solicitud = Solicitud(
-        id: id,
-        email: email,
-        phone: phone,
-        fechaEvento: date,
-        estado: 'pendiente',
-        fechaCreacion: DateTime.now(),
-      );
+      final String folioGenerado = (10000 + Random().nextInt(90000)).toString();
 
-      final repository = SolicitudRepositoryImpl(
-        datasource: SolicitudRemoteDatasource(
-          firestore: FirebaseFirestore.instance,
-        ),
-      );
 
-      await repository.crearSolicitud(solicitud);
+      await FirebaseFirestore.instance.collection('solicitudes').add({
+        'folio': folioGenerado,
+        'emailCliente': email,
+        'telefonoCliente': phone,
+        'fechaEvento': Timestamp.fromDate(date),
+        'estado': 'Pendiente',
+        'usuarioAsignado': 'Sin asignar',
+        'nombreEvento': 'Logística de Evento Gastronómico',
+      });
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Solicitud enviada con éxito. Folio: $id'),
-          backgroundColor: Colors.green,
-        ),
+
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.confirmation,
+        arguments: {
+          'folio': folioGenerado,
+          'email': email,
+        },
       );
     } catch (e) {
-      if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error al procesar la solicitud en la base de datos: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Solicitud de Cotización')),
-      body: ReusableSolicitudForm(
-        isLoading: _isSubmitting,
-        onSubmit: _saveToFirebase,
+      backgroundColor: const Color(0xFFFAF9F6),
+      appBar: AppBar(
+        title: const Text(
+          'Solicitud de Cotización',
+          style: TextStyle(color: Color(0xFF4A4B22), fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+      ),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: ReusableSolicitudForm(
+            onSubmit: _handleFormSubmit,
+            isLoading: _isSubmitting,
+          ),
+        ),
       ),
     );
   }

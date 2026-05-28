@@ -6,15 +6,13 @@ class PropuestaValorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F6),
-      // AQUI VA A IR EL MENUUUUUUUUUUUUUUU
+      backgroundColor: const Color(0xFFFAF9F6), 
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             children: [
-              const SizedBox(height: 32),
-
+              const SizedBox(height: 32), 
               Center(
                 child: Image.asset(
                   'assets/images/logo_sobre_nosotros.png',
@@ -22,9 +20,7 @@ class PropuestaValorScreen extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
               ),
-
               const SizedBox(height: 16),
-
               Text(
                 'Nuestra Propuesta\nIntercultural',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
@@ -34,9 +30,7 @@ class PropuestaValorScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 32),
-
               Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
@@ -60,9 +54,7 @@ class PropuestaValorScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
-
               const SizedBox(height: 40),
-
               Text(
                 'Respaldados por la Excelencia',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -72,9 +64,7 @@ class PropuestaValorScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 24),
-
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -140,7 +130,6 @@ class PropuestaValorScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 48),
             ],
           ),
@@ -150,7 +139,6 @@ class PropuestaValorScreen extends StatelessWidget {
   }
 }
 
-// PANTALLA PARA VER EL DIPLOMA
 class VisorDiplomaScreen extends StatelessWidget {
   const VisorDiplomaScreen({super.key});
 

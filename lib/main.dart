@@ -1,16 +1,27 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-
-import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/pages/worker_dashboard_page.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+import 'core/routes/app_routes.dart';
+import 'package:provider/provider.dart';
+import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
+import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  runApp(const ProductoraApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ReportViewModel()),
+        ChangeNotifierProvider(create: (_) => SolicitudesProvider()),
+      ],
+      child: const ProductoraApp(),
+    ),
+  );
 }
 
 class ProductoraApp extends StatelessWidget {
@@ -21,8 +32,13 @@ class ProductoraApp extends StatelessWidget {
     return MaterialApp(
       title: 'Productora Intercultural SpA',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const WorkerDashboardPage(),
+      theme: ThemeData(
+        primaryColor: const Color(0xFF4A4B22),
+        scaffoldBackgroundColor: const Color(0xFFFAF9F6),
+        useMaterial3: true,
+      ),
+      initialRoute: AppRoutes.root, 
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }
