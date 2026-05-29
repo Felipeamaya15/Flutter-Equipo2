@@ -6,9 +6,15 @@ class SolicitudesProvider extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
 
+  //Variable para guardar la solicitud cliqueada
+  QueryDocumentSnapshot? _solicitudSeleccionada;
+
   List<QueryDocumentSnapshot> get solicitudes => _solicitudes;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  
+  //Getter para que la pantalla de Felipe pueda leer la selección
+  QueryDocumentSnapshot? get solicitudSeleccionada => _solicitudSeleccionada;
 
   SolicitudesProvider() {
     _initStream();
@@ -27,6 +33,12 @@ class SolicitudesProvider extends ChangeNotifier {
         notifyListeners();
       }
     );
+  }
+
+  //Función que guarda la selección y avisa a las pantallas que cambien
+  void seleccionarSolicitud(QueryDocumentSnapshot? doc) {
+    _solicitudSeleccionada = doc;
+    notifyListeners();
   }
 
   Future<void> actualizarEstado(String docId, String nuevoEstado) async {
