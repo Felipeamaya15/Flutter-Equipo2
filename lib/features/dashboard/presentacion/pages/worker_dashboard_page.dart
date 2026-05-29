@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../providers/solicitudes_provider.dart'; 
 import 'generar_reporte_dialog.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
@@ -22,8 +23,10 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     final docId = doc.id;
     final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
     final String usuarioAsignado = data['usuarioAsignado'] ?? 'Sin asignar';
-    final String email = data['email'] ?? 'No registrado';
-    final String phone = data['phone'] ?? 'No registrado';
+    
+    // Arreglo de campos según la base de datos real
+    final String email = data['emailCliente'] ?? 'No registrado';
+    final String phone = data['telefonoCliente'] ?? 'No registrado';
 
     final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
     String estadoValido = 'Pendiente';
@@ -117,6 +120,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,11 +128,11 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.eco, color: primaryColor, size: 28),
-            const SizedBox(width: 8),
-            const Text(
+            Icon(Icons.eco, color: primaryColor, size: 28),
+            SizedBox(width: 8),
+            Text(
               'Productora Intercultural SpA',
               style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
             ),
@@ -208,9 +212,9 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
 
     int eventosSemanaCount = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      if (data['fecha_evento'] == null) return false;
+      if (data['fechaEvento'] == null) return false; // Ajuste de nombre
       try {
-         DateTime fecha = (data['fecha_evento'] as Timestamp).toDate();
+         DateTime fecha = (data['fechaEvento'] as Timestamp).toDate();
          return fecha.isAfter(start.subtract(const Duration(seconds: 1))) && 
                 fecha.isBefore(end.add(const Duration(seconds: 1)));
       } catch(e) {
@@ -232,19 +236,19 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
               _buildHeader('Panel trabajador', 'Gestión diaria de solicitudes, eventos y tareas del equipo.'),
               OutlinedButton.icon(
                 onPressed: () {
-      showDialog(
-        context: context,
-        builder: (context) => GenerarReporteDialog(),
-      );
-    },
-    icon: const Icon(Icons.analytics_outlined, size: 18),
-    label: const Text('Reporte', style: TextStyle(fontSize: 16)),
-    style: OutlinedButton.styleFrom(
-      foregroundColor: primaryColor,
-      side: const BorderSide(color: primaryColor),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    ),
-  ),
+                  showDialog(
+                    context: context,
+                    builder: (context) => const GenerarReporteDialog(),
+                  );
+                },
+                icon: const Icon(Icons.analytics_outlined, size: 18),
+                label: const Text('Reporte', style: TextStyle(fontSize: 16)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: primaryColor,
+                  side: const BorderSide(color: primaryColor),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 32),
@@ -296,67 +300,65 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     );
   }
 
-Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
-  final solicitudesAbiertas = docs.where((doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-  
-    return estado != 'completado';
-  }).toList();
+  Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
+    final solicitudesAbiertas = docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
+    
+      return estado != 'completado';
+    }).toList();
 
+    solicitudesAbiertas.sort((a, b) {
+      final dataA = a.data() as Map<String, dynamic>;
+      final dataB = b.data() as Map<String, dynamic>;
+      final Timestamp fechaA = dataA['creado_en'] ?? Timestamp.now();
+      final Timestamp fechaB = dataB['creado_en'] ?? Timestamp.now();
 
-  solicitudesAbiertas.sort((a, b) {
-    final dataA = a.data() as Map<String, dynamic>;
-    final dataB = b.data() as Map<String, dynamic>;
-    final Timestamp fechaA = dataA['creado_en'] ?? Timestamp.now();
-    final Timestamp fechaB = dataB['creado_en'] ?? Timestamp.now();
+      return fechaA.compareTo(fechaB);
+    });
 
-    return fechaA.compareTo(fechaB);
-  });
-
-  return _buildDashboardBlock(
-    title: 'Prioridades operativas',
-    icon: Icons.check_circle_outline_rounded,
-    child: solicitudesAbiertas.isEmpty
-        ? const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: Text(
-                '¡Excelente! Todas las solicitudes están completadas.',
-                style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
+    return _buildDashboardBlock(
+      title: 'Prioridades operativas',
+      icon: Icons.check_circle_outline_rounded,
+      child: solicitudesAbiertas.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(
+                child: Text(
+                  '¡Excelente! Todas las solicitudes están completadas.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
               ),
-            ),
-          )
-        : ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: solicitudesAbiertas.length > 3 ? 3 : solicitudesAbiertas.length,
-            itemBuilder: (context, index) {
-              final data = solicitudesAbiertas[index].data() as Map<String, dynamic>;
-              final docId = solicitudesAbiertas[index].id;
-              final String emailCliente = data['email'] ?? 'Sin correo';
-              final String rawTipo = data['tipoEvento'] ?? data['tipo_evento'] ?? '';
-              final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Catering para $emailCliente';
-              final Timestamp creadoEn = data['creado_en'] ?? Timestamp.now();
-              final DateTime fechaCreacion = creadoEn.toDate();
-              final Duration tiempoEspera = DateTime.now().difference(fechaCreacion);
-              bool esMuyAntigua = tiempoEspera.inHours >= 24;
-              final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim();
-              String etiqueta = estadoRaw.toLowerCase() == 'en proceso' || estadoRaw.toLowerCase() == 'en_proceso' ? 'En proceso' : 'Pendiente';
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: solicitudesAbiertas.length > 3 ? 3 : solicitudesAbiertas.length,
+              itemBuilder: (context, index) {
+                final data = solicitudesAbiertas[index].data() as Map<String, dynamic>;
+                final String emailCliente = data['emailCliente'] ?? 'Sin correo';
+                final String rawTipo = data['nombreEvento'] ?? '';
+                final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Logística para $emailCliente';
+                final Timestamp creadoEn = data['creado_en'] ?? Timestamp.now();
+                final DateTime fechaCreacion = creadoEn.toDate();
+                final Duration tiempoEspera = DateTime.now().difference(fechaCreacion);
+                bool esMuyAntigua = tiempoEspera.inHours >= 24;
+                final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim();
+                String etiqueta = estadoRaw.toLowerCase() == 'en proceso' || estadoRaw.toLowerCase() == 'en_proceso' ? 'En proceso' : 'Pendiente';
 
-              return _buildPriorityItem(
-                title: tipoCatering,
-                subtitle: esMuyAntigua 
-                    ? '⚠️ Tiempo de asignación excedido' 
-                    : 'Cliente: $emailCliente',
-                tag: esMuyAntigua ? 'ALTA' : etiqueta,
-                tagColor: esMuyAntigua ? Colors.redAccent : (etiqueta == 'En proceso' ? Colors.blue : Colors.orange),
-                trailingAction: const SizedBox.shrink(),
-              );
-            },
-          ),
-  );
-}
+                return _buildPriorityItem(
+                  title: tipoCatering,
+                  subtitle: esMuyAntigua 
+                      ? '⚠️ Tiempo de asignación excedido' 
+                      : 'Cliente: $emailCliente',
+                  tag: esMuyAntigua ? 'ALTA' : etiqueta,
+                  tagColor: esMuyAntigua ? Colors.redAccent : (etiqueta == 'En proceso' ? Colors.blue : Colors.orange),
+                  trailingAction: const SizedBox.shrink(),
+                );
+              },
+            ),
+    );
+  }
 
   Widget _buildAgendaHoyBlock() {
     return _buildDashboardBlock(
@@ -422,7 +424,7 @@ Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
   Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
     final eventosConFecha = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      return data['fecha_evento'] != null;
+      return data['fechaEvento'] != null; // Ajuste de nombre
     }).toList();
 
     return Padding(
@@ -440,12 +442,10 @@ Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
                     itemBuilder: (context, index) {
                       final data = eventosConFecha[index].data() as Map<String, dynamic>;
                       final docId = eventosConFecha[index].id;
-                      final DateTime fecha = (data['fecha_evento'] as Timestamp).toDate();
+                      final DateTime fecha = (data['fechaEvento'] as Timestamp).toDate();
                       final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
-                      final String emailCliente = data['email'] ?? 'Sin correo';
-                      
-                      final String rawTipo = data['tipoEvento'] ?? data['tipo_evento'] ?? '';
-                      final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Catering para $emailCliente';
+                      final String emailCliente = data['emailCliente'] ?? 'Sin correo';
+                      final String tipoCatering = data['nombreEvento'] ?? 'Logística de Evento';
 
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),
