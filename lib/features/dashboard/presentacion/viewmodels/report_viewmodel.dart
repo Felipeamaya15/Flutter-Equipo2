@@ -91,4 +91,19 @@ class ReportViewModel extends ChangeNotifier {
     _subscription?.cancel();
     super.dispose();
   }
+
+  // Corrección para evitar rangos de fecha imposibles
+  bool validarRangoFechas(DateTime fechaDesde, DateTime fechaHasta) {
+    if (fechaDesde.isAfter(fechaHasta)) {
+      errorMessage = 'Error: La fecha "Desde" no puede ser mayor que la fecha "Hasta".';
+      notifyListeners();
+      return false; // Bloquea la descarga si el rango está al revés
+    }
+    
+    // Si las fechas están bien y había un error de fechas guardado antes, lo limpia
+    if (errorMessage != null && errorMessage!.contains('La fecha')) {
+      errorMessage = null;
+    }
+    return true; // Rango correcto, permite continuar
+  }
 }
