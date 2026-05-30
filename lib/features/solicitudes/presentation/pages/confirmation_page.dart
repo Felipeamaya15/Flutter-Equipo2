@@ -69,7 +69,11 @@ class ConfirmationPage extends StatelessWidget {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(context, AppRoutes.solicitudForm, (route) => false);
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/', 
+                    (route) => false,
+                  );
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF4A4B22),

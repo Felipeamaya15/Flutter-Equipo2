@@ -135,7 +135,7 @@ class ReporteFormBody extends StatelessWidget {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
-          value: tipoReporte,
+          initialValue: tipoReporte,
           items: const [
             DropdownMenuItem(value: 'mensual', child: Text('Resumen Mensual')),
             DropdownMenuItem(value: 'operadores', child: Text('Rendimiento por Operador')),
