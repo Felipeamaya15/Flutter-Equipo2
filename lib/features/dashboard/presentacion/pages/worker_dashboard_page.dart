@@ -18,7 +18,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   static const Color primaryColor = Color(0xFF4A4B22);
   static const Color backgroundColor = Color(0xFFFAF9F6);
 
- Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
+Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     final data = doc.data() as Map<String, dynamic>;
     final docId = doc.id;
     final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
@@ -42,7 +42,12 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-         
+          // 1. Guardamos la solicitud cliqueada en el Provider
+          // Usamos listen: false porque estamos dentro de un evento de toque, no dibujando UI aquí
+          Provider.of<SolicitudesProvider>(context, listen: false).seleccionarSolicitud(doc);
+          
+          // 2. Navegamos a la pantalla del formulario que configuramos como "Modo Detalle"
+          Navigator.pushNamed(context, AppRoutes.solicitudForm);
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -85,7 +90,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                 ),
               );
 
-             
               if (compact) {
                 return Column(
                   mainAxisSize: MainAxisSize.min, 
@@ -103,7 +107,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                   ],
                 );
               }
-
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
