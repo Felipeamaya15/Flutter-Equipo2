@@ -4,11 +4,19 @@ import '../../../../core/utils/validators.dart';
 class ReusableSolicitudForm extends StatefulWidget {
   final Future<void> Function(String email, String phone, DateTime date) onSubmit;
   final bool isLoading;
+  final bool readOnly;
+  final String? initialEmail;
+  final String? initialPhone;
+  final DateTime? initialDate;
 
   const ReusableSolicitudForm({
     super.key,
     required this.onSubmit,
     this.isLoading = false,
+    this.readOnly = false,
+    this.initialEmail,
+    this.initialPhone,
+    this.initialDate,
   });
 
   @override
@@ -17,11 +25,19 @@ class ReusableSolicitudForm extends StatefulWidget {
 
 class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
 
   DateTime? _selectedDate;
   String? _dateError;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+    _phoneController = TextEditingController(text: widget.initialPhone);
+    _selectedDate = widget.initialDate;
+  }
 
   @override
   void dispose() {
@@ -31,11 +47,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   }
 
   Future<void> _selectDate() async {
-    final now = DateTime.now();
+    if (widget.readOnly) return;
 
+    final now = DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 1)),
+      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
       firstDate: now.add(const Duration(days: 1)),
       lastDate: DateTime(now.year + 1, now.month, now.day),
     );
@@ -49,6 +66,8 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   }
 
   Future<void> _submitForm() async {
+    if (widget.readOnly) return;
+
     String? dateValidation;
     if (_selectedDate == null) {
       dateValidation = 'Por favor selecciona la fecha de tu evento';
@@ -102,8 +121,17 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.emailAddress,
-              validator: Validators.email,
-              enabled: !widget.isLoading,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'El correo es obligatorio';
+                }
+                // RegExp para bloquear si no lleva el signo "@"
+                if (!value.contains('@')) {
+                  return 'El correo debe incluir un carácter "@"';
+                }
+                return Validators.email(value);
+              },
+              enabled: !widget.isLoading && !widget.readOnly,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -114,12 +142,22 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.phone,
-              validator: Validators.phone,
-              enabled: !widget.isLoading,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'El teléfono es obligatorio';
+                }
+                // RegExp para bloquear si incluye cualquier letra
+                final contieneLetras = RegExp(r'[a-zA-Z]');
+                if (contieneLetras.hasMatch(value)) {
+                  return 'El teléfono no puede incluir letras';
+                }
+                return Validators.phone(value);
+              },
+              enabled: !widget.isLoading && !widget.readOnly,
             ),
             const SizedBox(height: 16),
             InkWell(
-              onTap: widget.isLoading ? null : _selectDate,
+              onTap: (widget.isLoading || widget.readOnly) ? null : _selectDate,
               borderRadius: BorderRadius.circular(8),
               child: InputDecorator(
                 decoration: InputDecoration(
@@ -140,31 +178,33 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: widget.isLoading ? null : _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A4B22),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (!widget.readOnly) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: widget.isLoading ? null : _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A4B22),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  child: widget.isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Enviar solicitud', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                child: widget.isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Enviar solicitud', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-            ),
+            ],
           ],
         ),
       ),

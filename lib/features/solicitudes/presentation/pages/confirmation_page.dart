@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/routes/app_routes.dart';
 
 class ConfirmationPage extends StatelessWidget {
   final String folio;

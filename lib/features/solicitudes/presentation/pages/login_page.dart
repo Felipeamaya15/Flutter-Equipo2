@@ -37,14 +37,12 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (!mounted) return;
-
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
 
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;
         
         String mensajeError = 'Ocurrió un problema al intentar iniciar sesión.';
-        
         if (e.code == 'user-not-found') {
           mensajeError = 'No existe ninguna cuenta registrada con este correo.';
         } else if (e.code == 'wrong-password') {
@@ -72,6 +70,108 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     }
+  }
+
+  // Despliega el diálogo emergente adaptado para flujos móviles con carga asíncrona
+  void _showForgotPasswordDialog() {
+    final dialogEmailController = TextEditingController();
+    final dialogFormKey = GlobalKey<FormState>();
+    bool isDialogLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Evita cierres accidentales al pulsar fuera en el móvil
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text(
+                'Restablecer Contraseña',
+                style: TextStyle(color: Color(0xFF4A4B22), fontWeight: FontWeight.bold),
+              ),
+              content: Form(
+                key: dialogFormKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Ingresa tu correo institucional registrado y te enviaremos las instrucciones de recuperación.',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: dialogEmailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Correo electrónico',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: _validateEmail,
+                      enabled: !isDialogLoading,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDialogLoading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A4B22),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isDialogLoading
+                      ? null
+                      : () async {
+                          if (dialogFormKey.currentState!.validate()) {
+                            setDialogState(() => isDialogLoading = true);
+                            try {
+                              await FirebaseAuth.instance.sendPasswordResetEmail(
+                                email: dialogEmailController.text.trim(),
+                              );
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Enlace enviado. Revisa tu bandeja de entrada.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } on FirebaseAuthException catch (e) {
+                              String errorMsg = 'Error al procesar la solicitud.';
+                              if (e.code == 'user-not-found') {
+                                errorMsg = 'No se encontró una cuenta con este correo electrónico.';
+                              } else if (e.code == 'invalid-email') {
+                                errorMsg = 'El formato del correo es inválido.';
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red.shade800),
+                              );
+                            } finally {
+                              if (context.mounted) {
+                                setDialogState(() => isDialogLoading = false);
+                              }
+                            }
+                          }
+                        },
+                  child: isDialogLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Enviar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -127,7 +227,27 @@ class _LoginPageState extends State<LoginPage> {
                     validator: (value) => value == null || value.isEmpty ? 'La contraseña es obligatoria' : null,
                     enabled: !_isLoading,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isLoading ? null : _showForgotPasswordDialog,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(50, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Maximiza la zona táctil sin expandir visualmente
+                      ),
+                      child: const Text(
+                        '¿Olvidaste tu contraseña?',
+                        style: TextStyle(
+                          color: Color(0xFF4A4B22),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(

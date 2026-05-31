@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart'; 
 import 'dart:math';
 import '../../../../core/routes/app_routes.dart';
+import '../../../dashboard/presentacion/providers/solicitudes_provider.dart';
 import '../widgets/reusable_solicitud_form.dart';
 
 class SolicitudFormPage extends StatefulWidget {
@@ -18,9 +20,7 @@ class _SolicitudFormPageState extends State<SolicitudFormPage> {
     setState(() => _isSubmitting = true);
 
     try {
-
       final String folioGenerado = (10000 + Random().nextInt(90000)).toString();
-
 
       await FirebaseFirestore.instance.collection('solicitudes').add({
         'folio': folioGenerado,
@@ -33,7 +33,6 @@ class _SolicitudFormPageState extends State<SolicitudFormPage> {
       });
 
       if (!mounted) return;
-
 
       Navigator.pushReplacementNamed(
         context,
@@ -54,15 +53,29 @@ class _SolicitudFormPageState extends State<SolicitudFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Escucha el Provider del Dashboard para verificar si el usuario seleccionó un registro
+    final solicitudesProvider = Provider.of<SolicitudesProvider>(context);
+    final solicitudSeleccionada = solicitudesProvider.solicitudSeleccionada;
+    final bool esModoDetalle = solicitudSeleccionada != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F6),
       appBar: AppBar(
-        title: const Text(
-          'Solicitud de Cotización',
-          style: TextStyle(color: Color(0xFF4A4B22), fontWeight: FontWeight.bold),
+        title: Text(
+          esModoDetalle ? 'Detalle de Solicitud' : 'Solicitud de Cotización',
+          style: const TextStyle(color: Color(0xFF4A4B22), fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
         elevation: 0.5,
+        leading: esModoDetalle
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4B22)),
+                onPressed: () {
+                  solicitudesProvider.clearSeleccion();
+                  Navigator.of(context).pop();
+                },
+              )
+            : null,
       ),
       body: Center(
         child: Container(
@@ -70,6 +83,10 @@ class _SolicitudFormPageState extends State<SolicitudFormPage> {
           child: ReusableSolicitudForm(
             onSubmit: _handleFormSubmit,
             isLoading: _isSubmitting,
+            readOnly: esModoDetalle,
+            initialEmail: esModoDetalle ? solicitudSeleccionada.get('emailCliente') as String? : null,
+initialPhone: esModoDetalle ? solicitudSeleccionada.get('telefonoCliente') as String? : null,
+initialDate: esModoDetalle ? (solicitudSeleccionada.get('fechaEvento') as Timestamp?)?.toDate() : null,
           ),
         ),
       ),
