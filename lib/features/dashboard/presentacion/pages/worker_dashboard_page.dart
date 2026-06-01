@@ -211,19 +211,24 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
   }
 
   Widget _buildDashboardTab(List<QueryDocumentSnapshot> docs, bool isMobile, double paddingValue) {
+    
     int solicitudesActivas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-      return estado != 'completado'; 
+      return estado != 'completado' && estado.isNotEmpty; 
     }).length;
 
     int pendientesAsignar = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      final String estado = (data['estado'] ?? '').toString().trim().toLowerCase();
+      final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
       if (estado == 'completado') return false; 
-
       final String asignado = (data['usuarioAsignado'] ?? '').toString().trim().toLowerCase();
-      return asignado.isEmpty || asignado == 'sin asignar' || asignado == 'null';
+      bool estaSinAsignar = asignado.isEmpty || 
+                            asignado == 'sin asignar' || 
+                            asignado == 'null' || 
+                            asignado.contains('sin asignar');
+                            
+      return estaSinAsignar;
     }).length;
 
     DateTime now = DateTime.now();

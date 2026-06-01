@@ -69,4 +69,13 @@ class AuthRepositoryImpl implements AuthRepository {
       email: user.email ?? '',
     );
   }
+
+  @override
+  Future<void> recuperarContrasena(String email) async {
+    try {
+      await datasource.recuperarContrasena(email);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider; 
+import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;
         
-        String mensajeError = 'Ocurrió un problema al intentar iniciar sesión.';
+        String mensajeError = 'Ocurrió un problem al intentar iniciar sesión.';
         if (e.code == 'user-not-found') {
           mensajeError = 'No existe ninguna cuenta registrada con este correo.';
         } else if (e.code == 'wrong-password') {
@@ -72,7 +74,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Despliega el diálogo emergente adaptado para flujos móviles con carga asíncrona
   void _showForgotPasswordDialog() {
     final dialogEmailController = TextEditingController();
     final dialogFormKey = GlobalKey<FormState>();
@@ -80,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Evita cierres accidentales al pulsar fuera en el móvil
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -130,10 +131,13 @@ class _LoginPageState extends State<LoginPage> {
                           if (dialogFormKey.currentState!.validate()) {
                             setDialogState(() => isDialogLoading = true);
                             try {
-                              await FirebaseAuth.instance.sendPasswordResetEmail(
-                                email: dialogEmailController.text.trim(),
-                              );
+                              final String emailCapturado = dialogEmailController.text.trim();
+
+                              await Provider.of<AuthProvider>(context, listen: false)
+                                  .recuperarContrasena(emailCapturado);
+
                               if (!context.mounted) return;
+                              
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -142,14 +146,27 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               );
                             } on FirebaseAuthException catch (e) {
-                              String errorMsg = 'Error al procesar la solicitud.';
+                              String errorMsg = 'Error al procesar la solicitud de recuperación.';
                               if (e.code == 'user-not-found') {
-                                errorMsg = 'No se encontró una cuenta con este correo electrónico.';
+                                errorMsg = 'No se encontró una cuenta institucional con este correo.';
                               } else if (e.code == 'invalid-email') {
                                 errorMsg = 'El formato del correo es inválido.';
+                              } else if (e.code == 'network-request-failed') {
+                                errorMsg = 'Error de conexión. Revisa tu red de datos móvil.';
                               }
+
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red.shade800),
+                                SnackBar(
+                                  content: Text(errorMsg), 
+                                  backgroundColor: Colors.red.shade800,
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error inesperado: ${e.toString()}'), 
+                                  backgroundColor: Colors.red.shade800,
+                                ),
                               );
                             } finally {
                               if (context.mounted) {
@@ -235,7 +252,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Maximiza la zona táctil sin expandir visualmente
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: const Text(
                         '¿Olvidaste tu contraseña?',
