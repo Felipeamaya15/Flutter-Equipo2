@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../providers/solicitudes_provider.dart'; 
 import 'generar_reporte_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -158,7 +159,17 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
             tooltip: 'Cerrar Sesión',
-            onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+
+              if (!context.mounted) return;
+
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (route) => false,
+              );
+            },
           ),
         ],
       ),
