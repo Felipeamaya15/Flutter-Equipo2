@@ -16,7 +16,7 @@ class AppRoutes {
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case root: // Verificamos la sesión aquí
+      case root:
         return MaterialPageRoute(builder: (_) => const AuthWrapper());
       case login:
         return MaterialPageRoute(builder: (_) => const LoginPage());
@@ -26,14 +26,22 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ReportPage());
       case solicitudForm:
         return MaterialPageRoute(builder: (_) => const SolicitudFormPage());
+        
       case confirmation:
-        final args = settings.arguments as Map<String, dynamic>?;
+        final dynamic rawArgs = settings.arguments;
+        Map<String, dynamic>? args;
+
+        if (rawArgs is Map<String, dynamic>) {
+          args = rawArgs;
+        }
+
         return MaterialPageRoute(
           builder: (_) => ConfirmationPage(
-            folio: args?['folio'] ?? '00000',
-            email: args?['email'] ?? '',
+            folio: args?['folio']?.toString() ?? '00000',
+            email: args?['email']?.toString() ?? 'No disponible',
           ),
         );
+
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
@@ -50,10 +58,8 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),

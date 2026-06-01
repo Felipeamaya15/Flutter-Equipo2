@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
 import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
 import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
+import 'features/auth/data/datasources/firebase_auth_datasource.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +22,15 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
         ChangeNotifierProvider(create: (_) => SolicitudesProvider()),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(
+            repository: AuthRepositoryImpl(
+              datasource: FirebaseAuthDatasource(
+                firebaseAuth: firebase_auth.FirebaseAuth.instance,
+              ),
+            ),
+          ),
+        ),
       ],
       child: const ProductoraApp(),
     ),
