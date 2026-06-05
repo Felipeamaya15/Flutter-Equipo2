@@ -1,212 +1,810 @@
 import 'package:flutter/material.dart';
-import '../../../../core/utils/validators.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_equipo2/core/utils/validators.dart';
 
 class ReusableSolicitudForm extends StatefulWidget {
-  final Future<void> Function(String email, String phone, DateTime date) onSubmit;
+  final Future<void> Function(Map<String, dynamic> data) onSubmit;
   final bool isLoading;
   final bool readOnly;
-  final String? initialEmail;
-  final String? initialPhone;
-  final DateTime? initialDate;
+  final QueryDocumentSnapshot? solicitudDoc;
 
   const ReusableSolicitudForm({
     super.key,
     required this.onSubmit,
     this.isLoading = false,
     this.readOnly = false,
-    this.initialEmail,
-    this.initialPhone,
-    this.initialDate,
+    this.solicitudDoc,
   });
 
   @override
   State<ReusableSolicitudForm> createState() => _ReusableSolicitudFormState();
 }
-
+ 
 class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   final _formKey = GlobalKey<FormState>();
+  int _currentStep = 0;
+
+  String _tipoCliente = 'Persona'; 
+  late final TextEditingController _nombreClienteController; 
+  late final TextEditingController _rutController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
+  late final TextEditingController _giroController;
+  late final TextEditingController _direccionComercialController;
+  late final TextEditingController _nombreContactoEmpresaController;
 
+  // SECCIÓN LOGÍSTICA
+  String _tipoEvento = 'Evento Corporativo / Empresa';
   DateTime? _selectedDate;
-  String? _dateError;
+  TimeOfDay? _horaInicio;
+  TimeOfDay? _horaTermino;
+  late final TextEditingController _asistentesController;
+  late final TextEditingController _lugarController;
+  String _tipoEspacio = 'Salón Cerrado';
+
+  // SECCIÓN GASTRONÓMICA
+  String _formatoServicio = 'Banquetería Completa (Cóctel + Entrada + Fondo + Postre)';
+  final List<String> _preferenciasMenu = [];
+  final List<String> _restriccionesAlimentarias = [];
+  late final TextEditingController _detallesEspecialesController;
+
+  // ASIGNACIÓN ENCARGADO
+  String _encargadoSeleccionado = 'Sin asignar';
+  // ignore: prefer_final_fields
+  List<String> _listaEncargados = ['Sin asignar', 'Coordinador General', 'María González', 'Juan Pérez', 'Ana Martínez'];
 
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: widget.initialEmail);
-    _phoneController = TextEditingController(text: widget.initialPhone);
-    _selectedDate = widget.initialDate;
+    final data = widget.solicitudDoc?.data() as Map<String, dynamic>?;
+    if (data != null) {
+      _tipoCliente = data['tipoCliente'] ?? 'Persona';
+      _nombreClienteController = TextEditingController(text: data['nombreCliente'] ?? (data['emailCliente'] != null ? 'Cliente Registrado' : ''));
+      _rutController = TextEditingController(text: data['rutCliente'] ?? '');
+      _emailController = TextEditingController(text: data['emailCliente'] ?? '');
+      _phoneController = TextEditingController(text: data['telefonoCliente'] ?? '');
+      _giroController = TextEditingController(text: data['giroEmpresa'] ?? '');
+      _direccionComercialController = TextEditingController(text: data['direccionComercial'] ?? '');
+      _nombreContactoEmpresaController = TextEditingController(text: data['nombreContactoEmpresa'] ?? '');
+
+      _tipoEvento = data['nombreEvento'] ?? 'Seleccionar tipo de evento';
+      _selectedDate = (data['fechaEvento'] as Timestamp?)?.toDate();
+      
+      if (data['bodyInicio'] != null) {
+        final partes = data['horaInicio'].toString().split(':');
+        _horaInicio = TimeOfDay(hour: int.parse(partes[0]), minute: int.parse(partes[1]));
+      }
+      if (data['horaTermino'] != null) {
+        final partes = data['horaTermino'].toString().split(':');
+        _horaTermino = TimeOfDay(hour: int.parse(partes[0]), minute: int.parse(partes[1]));
+      }
+
+      _asistentesController = TextEditingController(text: data['cantidadAsistentes']?.toString() ?? '');
+      _lugarController = TextEditingController(text: data['lugarEvento'] ?? '');
+      _tipoEspacio = data['tipoEspacio'] ?? 'Seleccionar tipo de espacio';
+
+      _formatoServicio = data['formatoServicio'] ?? 'Banquetería Completa (Cóctel + Entrada + Fondo + Postre)';
+      if (data['preferenciasMenu'] != null) {
+        _preferenciasMenu.addAll(List<String>.from(data['preferenciasMenu']));
+      }
+      if (data['restriccionesAlimentarias'] != null) {
+        _restriccionesAlimentarias.addAll(List<String>.from(data['restriccionesAlimentarias']));
+      }
+      _detallesEspecialesController = TextEditingController(text: data['detallesEspeciales'] ?? '');
+      _encargadoSeleccionado = data['usuarioAsignado'] ?? 'Sin asignar';
+    } 
+    else {
+      _tipoCliente = 'Persona';
+      _nombreClienteController = TextEditingController();
+      _rutController = TextEditingController();
+      _emailController = TextEditingController();
+      _phoneController = TextEditingController();
+      _giroController = TextEditingController();
+      _direccionComercialController = TextEditingController();
+      _nombreContactoEmpresaController = TextEditingController();
+
+      _tipoEvento = 'Seleccionar tipo de evento';
+      _selectedDate = null;
+      _horaInicio = null;
+      _horaTermino = null;
+      _asistentesController = TextEditingController();
+      _lugarController = TextEditingController();
+      _tipoEspacio = 'Seleccionar tipo de espacio';
+
+      _formatoServicio = 'Seleccionar formato de servicio';
+      _detallesEspecialesController = TextEditingController();
+      _encargadoSeleccionado = 'Sin asignar';
+    }
+    if (!_listaEncargados.contains(_encargadoSeleccionado)) {
+      _listaEncargados.add(_encargadoSeleccionado);
+    }
   }
 
   @override
   void dispose() {
+    _nombreClienteController.dispose();
+    _rutController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _giroController.dispose();
+    _direccionComercialController.dispose();
+    _nombreContactoEmpresaController.dispose();
+    _asistentesController.dispose();
+    _lugarController.dispose();
+    _detallesEspecialesController.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate() async {
     if (widget.readOnly) return;
-
     final now = DateTime.now();
-    final DateTime? picked = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
-      firstDate: now.add(const Duration(days: 1)),
-      lastDate: DateTime(now.year + 1, now.month, now.day),
+      initialDate: _selectedDate ?? now.add(const Duration(days: 7)),
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
     );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
 
+  Future<void> _selectTime(bool isInicio) async {
+    if (widget.readOnly) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isInicio ? (_horaInicio ?? const TimeOfDay(hour: 9, minute: 0)) : (_horaTermino ?? const TimeOfDay(hour: 18, minute: 0)),
+    );
     if (picked != null) {
       setState(() {
-        _selectedDate = picked;
-        _dateError = null;
+        if (isInicio) {
+          _horaInicio = picked;
+        } else {
+          _horaTermino = picked;
+        }
       });
     }
   }
 
-  Future<void> _submitForm() async {
-    if (widget.readOnly) return;
+  void _agregarEncargadoModal() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Agregar Nuevo Encargado', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4A4B22))),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Nombre Completo', border: OutlineInputBorder()),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A4B22)),
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                setState(() {
+                  _listaEncargados.add(controller.text.trim());
+                  _encargadoSeleccionado = controller.text.trim();
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    );
+  }
 
-    String? dateValidation;
+  void _submitForm() {
+    if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null) {
-      dateValidation = 'Por favor selecciona la fecha de tu evento';
-    } else {
-      dateValidation = Validators.futureDate(_selectedDate);
-    }
-
-    setState(() {
-      _dateError = dateValidation;
-    });
-
-    if (!_formKey.currentState!.validate() || dateValidation != null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecciona la fecha del evento.'), backgroundColor: Colors.orange));
       return;
     }
 
-    await widget.onSubmit(
-      _emailController.text.trim(),
-      _phoneController.text.trim(),
-      _selectedDate!,
-    );
+    final datosFinales = {
+      'tipoCliente': _tipoCliente,
+      'nombreCliente': _nombreClienteController.text.trim(),
+      'rutCliente': _rutController.text.trim(),
+      'emailCliente': _emailController.text.trim(),
+      'telefonoCliente': _phoneController.text.trim(),
+      'giroEmpresa': _tipoCliente == 'Empresa' ? _giroController.text.trim() : '',
+      'direccionComercial': _tipoCliente == 'Empresa' ? _direccionComercialController.text.trim() : '',
+      'nombreContactoEmpresa': _tipoCliente == 'Empresa' ? _nombreContactoEmpresaController.text.trim() : '',
+      'tipoEvento': _tipoEvento,
+      'fechaEvento': _selectedDate,
+      'horaInicio': _horaInicio != null ? '${_horaInicio!.hour}:${_horaInicio!.minute}' : '09:00',
+      'horaTermino': _horaTermino != null ? '${_horaTermino!.hour}:${_horaTermino!.minute}' : '18:00',
+      'cantidadAsistentes': int.tryParse(_asistentesController.text) ?? 10,
+      'lugarEvento': _lugarController.text.trim(),
+      'tipoEspacio': _tipoEspacio,
+      'formatoServicio': _formatoServicio,
+      'preferenciasMenu': _preferenciasMenu,
+      'restriccionesAlimentarias': _restriccionesAlimentarias,
+      'detallesEspeciales': _detallesEspecialesController.text.trim(),
+      'usuarioAsignado': _encargadoSeleccionado,
+    };
 
-    if (!mounted) return;
-
-    _emailController.clear();
-    _phoneController.clear();
-    setState(() {
-      _selectedDate = null;
-      _dateError = null;
-    });
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    widget.onSubmit(datosFinales);
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: SingleChildScrollView( 
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                hintText: 'ejemplo@correo.com',
-                border: OutlineInputBorder(),
+      child: Stepper(
+        type: StepperType.vertical,
+        currentStep: _currentStep,
+        onStepCancel: _currentStep == 0 ? null : () => setState(() => _currentStep--),
+        onStepContinue: () {
+          if (widget.isLoading) return;
+
+          bool isCurrentStepValid = false;
+
+          if (_currentStep == 0) {
+            bool nameValid = Validators.requiredField(_nombreClienteController.text, _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social') == null;
+            bool rutValid = Validators.rut(_rutController.text) == null;
+            bool emailValid = Validators.email(_emailController.text) == null;
+            bool phoneValid = Validators.phone(_phoneController.text) == null;
+
+            if (_tipoCliente == 'Empresa') {
+              bool giroValid = Validators.requiredField(_giroController.text, 'Giro Comercial') == null;
+              bool dirValid = Validators.requiredField(_direccionComercialController.text, 'Dirección Comercial') == null;
+              bool contactValid = Validators.requiredField(_nombreContactoEmpresaController.text, 'Nombre del Coordinador') == null;
+              isCurrentStepValid = nameValid && rutValid && emailValid && phoneValid && giroValid && dirValid && contactValid;
+            } else {
+              isCurrentStepValid = nameValid && rutValid && emailValid && phoneValid;
+            }
+
+            if (!isCurrentStepValid) _formKey.currentState!.validate();
+
+          } else if (_currentStep == 1) {
+            bool eventTypeValid = _tipoEvento != 'Seleccionar tipo de evento';
+            bool dateValid = Validators.futureDate(_selectedDate) == null;
+            bool guestsValid = _asistentesController.text.isNotEmpty;
+            bool placeValid = _lugarController.text.isNotEmpty;
+            bool spaceValid = _tipoEspacio != 'Seleccionar tipo de espacio';
+
+            isCurrentStepValid = eventTypeValid && dateValid && guestsValid && placeValid && spaceValid;
+            
+            if (!isCurrentStepValid) _formKey.currentState!.validate();
+
+          } else if (_currentStep == 2) {
+            isCurrentStepValid = _formatoServicio != 'Seleccionar formato de servicio';
+            
+            if (!isCurrentStepValid) _formKey.currentState!.validate();
+
+          } else if (_currentStep == 3) {
+            isCurrentStepValid = _formKey.currentState!.validate();
+          }
+
+          if (isCurrentStepValid) {
+            if (_currentStep < 3) {
+              setState(() => _currentStep++);
+            } else if (!widget.readOnly) {
+              _submitForm();
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Por favor, completa los campos obligatorios del paso actual.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
               ),
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'El correo es obligatorio';
-                }
-                // RegExp para bloquear si no lleva el signo "@"
-                if (!value.contains('@')) {
-                  return 'El correo debe incluir un carácter "@"';
-                }
-                return Validators.email(value);
-              },
-              enabled: !widget.isLoading && !widget.readOnly,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono',
-                hintText: '912345678',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.phone,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'El teléfono es obligatorio';
-                }
-                // RegExp para bloquear si incluye cualquier letra
-                final contieneLetras = RegExp(r'[a-zA-Z]');
-                if (contieneLetras.hasMatch(value)) {
-                  return 'El teléfono no puede incluir letras';
-                }
-                return Validators.phone(value);
-              },
-              enabled: !widget.isLoading && !widget.readOnly,
-            ),
-            const SizedBox(height: 16),
-            InkWell(
-              onTap: (widget.isLoading || widget.readOnly) ? null : _selectDate,
-              borderRadius: BorderRadius.circular(8),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Fecha del evento',
-                  border: const OutlineInputBorder(),
-                  errorText: _dateError, 
-                  suffixIcon: const Icon(Icons.calendar_today),
-                ),
-                child: Text(
-                  _selectedDate == null
-                      ? 'Seleccionar fecha del evento'
-                      : _formatDate(_selectedDate!),
-                  style: TextStyle(
-                    color: _selectedDate == null
-                        ? Theme.of(context).hintColor
-                        : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-            if (!widget.readOnly) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: widget.isLoading ? null : _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A4B22),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+            );
+          }
+        },
+        controlsBuilder: (context, controls) {
+          return Padding(
+            padding: const EdgeInsets.only(top:20.0),
+            child: Row(
+              children: [
+                if(!widget.readOnly || _currentStep < 3)
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A4B22),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: widget.isLoading ? null : controls.onStepContinue,
+                      child: widget.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text(_currentStep == 3 ? 'Finalizar' : 'Siguiente'), 
                     ),
                   ),
-                  child: widget.isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Enviar solicitud', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                if (_currentStep > 0) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                      ),
+                      onPressed: widget.isLoading ? null : controls.onStepCancel,
+                      child: const Text('Atrás'),
+                    ),
+                  ),
+                ]
+              ],
+            ),
+          );
+        },
+        steps: [
+          // DATOS DEL CLIENTE
+          Step(
+            title: const Text('Datos del Cliente', style: TextStyle(fontWeight: FontWeight.bold)),
+            isActive: _currentStep >= 0,
+            state: _currentStep > 0 ? StepState.complete : StepState.editing,
+            content: Column(
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'Persona', label: Text('Persona Natural'), icon: Icon(Icons.person)),
+                    ButtonSegment(value: 'Empresa', label: Text('Empresa / Corp'), icon: Icon(Icons.business)),
+                  ],
+                  selected: {_tipoCliente},
+                  onSelectionChanged: widget.readOnly ? null : (val) => setState(() => _tipoCliente = val.first),
                 ),
-              ),
-            ],
-          ],
-        ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _nombreClienteController,
+                  decoration: InputDecoration(labelText: _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social de la Empresa', border: const OutlineInputBorder()),
+                  validator: (v) => Validators.requiredField(v, _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social'),
+                  enabled: !widget.readOnly,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _rutController,
+                  decoration: const InputDecoration(labelText: 'RUT (Ej: 12.345.678-9)', border: OutlineInputBorder()),
+                  validator: (v) => Validators.rut(v),
+                  enabled: !widget.readOnly,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Correo Electrónico', 
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) => Validators.email(v),
+                        enabled: !widget.readOnly,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 5,
+                      child: TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Teléfono', 
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        validator: (v) => Validators.phone(v),
+                        enabled: !widget.readOnly,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_tipoCliente == 'Empresa') ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _giroController, 
+                    decoration: const InputDecoration(labelText: 'Giro Comercial (SII)', 
+                    border: OutlineInputBorder()), 
+                    enabled: !widget.readOnly,
+                    validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Giro Comercial') : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(controller: _direccionComercialController,
+                    decoration: const InputDecoration(labelText: 'Dirección Comercial de Facturación',
+                    border: OutlineInputBorder()),
+                    enabled: !widget.readOnly,
+                    validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Dirección Comercial') : null,
+                    ),
+                  const SizedBox(height: 12),
+                  TextFormField(controller: _nombreContactoEmpresaController,
+                    decoration: const InputDecoration(labelText: 'Nombre del Coordinador/Contacto',
+                    border: OutlineInputBorder()), 
+                    enabled: !widget.readOnly,
+                    validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Nombre del Coordinador') : null,
+                    ),
+                ]
+              ],
+            ),
+          ),
+          // LOGÍSTICA DEL EVENTO
+          Step(
+            title: const Text('Logística del Evento', style: TextStyle(fontWeight: FontWeight.bold)),
+            isActive: _currentStep >= 1,
+            state: _currentStep > 1 ? StepState.complete : StepState.editing,
+            content: Column(
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
+                    child: Text(
+                      'Tipo de Evento',
+                      style: TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600, 
+                        color: Color(0xFF4A4B22),
+                      ),
+                    ),
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _tipoEvento,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14), 
+                  ),
+                  validator: (v) {
+                    if (v == null || v == 'Seleccionar tipo de evento') {
+                      return 'Por favor, debes seleccionar un tipo de evento';
+                    }
+                    return null;
+                  },
+                  items: [
+                    'Seleccionar tipo de evento',
+                    'Matrimonio', 
+                    'Evento Corporativo / Empresa', 
+                    'Cumpleaños / Aniversario', 
+                    'Graduación', 
+                    'Coctel / Lanzamiento', 
+                    'Almuerzo/Cena Privada'
+                  ].map((e) {
+                    return DropdownMenuItem(
+                      value: e, 
+                      child: Text(
+                        e, 
+                        style: TextStyle(
+                          color: e == 'Seleccionar tipo de evento' ? Colors.grey.shade500 : Colors.black,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: widget.readOnly ? null : (v) => setState(() => _tipoEvento = v!),
+                ),
+                const SizedBox(height: 12),
+
+                FormField<DateTime>(
+                  initialValue: _selectedDate,
+                  validator: (value) => Validators.futureDate(_selectedDate),
+                  builder: (FormFieldState<DateTime> state) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          title: Text(
+                            _selectedDate == null 
+                                ? 'Seleccionar Fecha' 
+                                : 'Fecha: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                          ),
+                          trailing: Icon(
+                            Icons.calendar_today, 
+                            color: state.hasError ? Colors.red.shade700 : const Color(0xFF4A4B22),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(
+                              color: state.hasError ? Colors.red.shade700 : Colors.grey.shade400,
+                              width: state.hasError ? 2.0 : 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          onTap: () async {
+                            await _selectDate();
+                            state.didChange(_selectedDate);
+                          },
+                        ),
+                        if (state.hasError)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12.0, top: 6.0),
+                            child: Text(
+                              state.errorText!,
+                              style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        title: Text(_horaInicio == null ? 'Hora Inicio' : 'Inicia: ${_horaInicio!.format(context)}'),
+                        trailing: const Icon(Icons.access_time),
+                        shape: RoundedRectangleBorder(side: BorderSide(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(4)),
+                        onTap: () => _selectTime(true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ListTile(
+                        title: Text(_horaTermino == null ? 'Hora Término' : 'Termina: ${_horaTermino!.format(context)}'),
+                        trailing: const Icon(Icons.access_time),
+                        shape: RoundedRectangleBorder(side: BorderSide(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(4)),
+                        onTap: () => _selectTime(false),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _asistentesController,
+                  decoration: const InputDecoration(labelText: 'Cantidad de Asistentes', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v!.isEmpty ? 'Ingresa el número de invitados' : null,
+                  enabled: !widget.readOnly,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _lugarController, 
+                  decoration: const InputDecoration(labelText: 'Lugar / Dirección del Evento', border: OutlineInputBorder()), 
+                  validator: (v) => v!.isEmpty ? 'Lugar obligatorio' : null, 
+                  enabled: !widget.readOnly,
+                ),
+                const SizedBox(height: 12),
+
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
+                    child: Text(
+                      'Tipo de Espacio',
+                      style: TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600, 
+                        color: Color(0xFF4A4B22),
+                      ),
+                    ),
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _tipoEspacio,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  ),
+                  validator: (v) {
+                    if (v == null || v == 'Seleccionar tipo de espacio') {
+                      return 'Por favor, debes seleccionar un tipo de espacio';
+                    }
+                    return null;
+                  },
+                  items: [
+                    'Seleccionar tipo de espacio',
+                    'Aire Libre', 
+                    'Salón Cerrado', 
+                    'Espacio Mixto (Terraza/Salón)'
+                  ].map((e) {
+                    return DropdownMenuItem(
+                      value: e, 
+                      child: Text(
+                        e, 
+                        style: TextStyle(
+                          color: e == 'Seleccionar tipo de espacio' ? Colors.grey.shade500 : Colors.black,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: widget.readOnly ? null : (v) => setState(() => _tipoEspacio = v!),
+                ),
+              ],
+            ),
+          ),
+          // PROPUESTA GRASTRONÓMICA 
+          Step(
+            title: const Text('Menú y Experiencia', style: TextStyle(fontWeight: FontWeight.bold)),
+            isActive: _currentStep >= 2,
+            state: _currentStep > 2 ? StepState.complete : StepState.editing,
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
+                    child: Text(
+                      'Formato del Servicio',
+                      style: TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600, 
+                        color: Color(0xFF4A4B22),
+                      ),
+                    ),
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _formatoServicio,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  ),
+                  validator: (v) {
+                    if (v == null || v == 'Seleccionar formato de servicio') {
+                      return 'Por favor, debes seleccionar un formato de servicio';
+                    }
+                    return null;
+                  },
+                  items: [
+                    'Seleccionar formato de servicio',
+                    'Banquetería Completa (Cóctel + Entrada + Fondo + Postre)',
+                    'Solo Cóctel / Finger Food', 
+                    'Buffet Intercultural', 
+                    'Coffee Break / Té de Honor'
+                  ].map((e) {
+                    return DropdownMenuItem(
+                      value: e, 
+                      child: Text(
+                        e, 
+                        style: TextStyle(
+                          color: e == 'Seleccionar formato de servicio' ? Colors.grey.shade500 : Colors.black,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: widget.readOnly ? null : (v) => setState(() => _formatoServicio = v!),
+                ),
+                const SizedBox(height: 16),
+                const Text('Preferencia de Menú Temático', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4A4B22))),
+                ...['Fusión Intercultural', 'Gastronomía Típica Chilena', 'Cocina Internacional', 'Menú de Autor'].map((item) {
+                  return CheckboxListTile(
+                    title: Text(item),
+                    value: _preferenciasMenu.contains(item),
+                    onChanged: widget.readOnly ? null : (bool? checked) {
+                      setState(() {
+                        if (checked!) {
+                          _preferenciasMenu.add(item);
+                        } else {
+                          _preferenciasMenu.remove(item);
+                        }
+                      });
+                    },
+                  );
+                }),
+                const SizedBox(height: 12),
+                const Text('Restricciones Alimentarias', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4A4B22))),
+                ...['Vegano', 'Vegetariano', 'Sin Gluten (Celiacos)', 'Sin Lactosa'].map((item) {
+                  return CheckboxListTile(
+                    title: Text(item),
+                    value: _restriccionesAlimentarias.contains(item),
+                    onChanged: widget.readOnly ? null : (bool? checked) {
+                      setState(() {
+                        if (checked!) {
+                          _restriccionesAlimentarias.add(item);
+                        } else {
+                          _restriccionesAlimentarias.remove(item);
+                        }
+                      });
+                    },
+                  );
+                }),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _detallesEspecialesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Descripción y Detalles Especiales', hintText: 'Escribe aquí montajes, decoraciones particulares...', border: OutlineInputBorder()),
+                  enabled: !widget.readOnly,
+                ),
+              ],
+            ),
+          ),
+
+          //ASIGNACIÓN DE ENCARGADO
+          Step(
+            title: const Text('Asignación de Encargado', style: TextStyle(fontWeight: FontWeight.bold)),
+            isActive: _currentStep >= 3,
+            state: StepState.editing,
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
+                    child: Text(
+                      'Encargado de la Cotización',
+                      style: TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600, 
+                        color: Color(0xFF4A4B22),
+                      ),
+                    ),
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _encargadoSeleccionado,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  ),
+                  items: _listaEncargados.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: widget.readOnly ? null : (v) => setState(() => _encargadoSeleccionado = v!),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Lista de Encargados Disponibles', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    if (!widget.readOnly)
+                      IconButton(icon: const Icon(Icons.add_circle, color: Color(0xFF4A4B22), size: 28), onPressed: _agregarEncargadoModal)
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _listaEncargados.length,
+                  itemBuilder: (context, index) {
+                    final nombre = _listaEncargados[index];
+                    if (nombre == 'Sin asignar') return const SizedBox.shrink();
+
+                    return Dismissible(
+                      key: Key(nombre),
+                      direction: widget.readOnly ? DismissDirection.none : DismissDirection.endToStart,
+                      background: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        color: Colors.redAccent,
+                        alignment: Alignment.centerRight,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      confirmDismiss: (direction) async {
+                        return await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('¿Eliminar Encargado?'),
+                            content: Text('¿Estás seguro de que quieres quitar a $nombre de la lista operativa?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                      },
+                      onDismissed: (direction) {
+                        setState(() {
+                          _listaEncargados.removeAt(index);
+                          if (_encargadoSeleccionado == nombre) {
+                            _encargadoSeleccionado = 'Sin asignar';
+                          }
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Encargado $nombre removido.')));
+                      },
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: const Icon(Icons.account_circle, color: Colors.grey),
+                          title: Text(nombre),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
