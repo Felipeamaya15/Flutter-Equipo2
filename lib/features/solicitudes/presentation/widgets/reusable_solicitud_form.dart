@@ -230,11 +230,22 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
 
   @override
   Widget build(BuildContext context) {
+    const Color verdeEmpresa = Color(0xFF4A4B22);
+
     return Form(
       key: _formKey,
+      child:Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+            primary: verdeEmpresa,
+            secondary: verdeEmpresa,
+          ),
+        ),
       child: Stepper(
         type: StepperType.vertical,
         currentStep: _currentStep,
+        physics: const NeverScrollableScrollPhysics(),
+        
         onStepCancel: _currentStep == 0 ? null : () => setState(() => _currentStep--),
         onStepContinue: () {
           if (widget.isLoading) return;
@@ -401,25 +412,24 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _giroController, 
-                    decoration: const InputDecoration(labelText: 'Giro Comercial (SII)', 
-                    border: OutlineInputBorder()), 
+                    decoration: const InputDecoration(labelText: 'Giro Comercial (SII)', border: OutlineInputBorder()), 
                     enabled: !widget.readOnly,
                     validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Giro Comercial') : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(controller: _direccionComercialController,
-                    decoration: const InputDecoration(labelText: 'Dirección Comercial de Facturación',
-                    border: OutlineInputBorder()),
+                  TextFormField(
+                    controller: _direccionComercialController,
+                    decoration: const InputDecoration(labelText: 'Dirección Comercial de Facturación', border: OutlineInputBorder()),
                     enabled: !widget.readOnly,
                     validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Dirección Comercial') : null,
-                    ),
+                  ),
                   const SizedBox(height: 12),
-                  TextFormField(controller: _nombreContactoEmpresaController,
-                    decoration: const InputDecoration(labelText: 'Nombre del Coordinador/Contacto',
-                    border: OutlineInputBorder()), 
+                  TextFormField(
+                    controller: _nombreContactoEmpresaController,
+                    decoration: const InputDecoration(labelText: 'Nombre del Coordinador/Contacto', border: OutlineInputBorder()), 
                     enabled: !widget.readOnly,
                     validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Nombre del Coordinador') : null,
-                    ),
+                  ),
                 ]
               ],
             ),
@@ -437,11 +447,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
                     child: Text(
                       'Tipo de Evento',
-                      style: TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600, 
-                        color: Color(0xFF4A4B22),
-                      ),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4B22)),
                     ),
                   ),
                 ),
@@ -471,16 +477,13 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                       value: e, 
                       child: Text(
                         e, 
-                        style: TextStyle(
-                          color: e == 'Seleccionar tipo de evento' ? Colors.grey.shade500 : Colors.black,
-                        ),
+                        style: TextStyle(color: e == 'Seleccionar tipo de evento' ? Colors.grey.shade500 : Colors.black),
                       ),
                     );
                   }).toList(),
                   onChanged: widget.readOnly ? null : (v) => setState(() => _tipoEvento = v!),
                 ),
                 const SizedBox(height: 12),
-
                 FormField<DateTime>(
                   initialValue: _selectedDate,
                   validator: (value) => Validators.futureDate(_selectedDate),
@@ -513,17 +516,13 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                         if (state.hasError)
                           Padding(
                             padding: const EdgeInsets.only(left: 12.0, top: 6.0),
-                            child: Text(
-                              state.errorText!,
-                              style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                            ),
+                            child: Text(state.errorText!, style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
                           ),
                       ],
                     );
                   },
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -546,7 +545,6 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 TextFormField(
                   controller: _asistentesController,
                   decoration: const InputDecoration(labelText: 'Cantidad de Asistentes', border: OutlineInputBorder()),
@@ -562,18 +560,13 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   enabled: !widget.readOnly,
                 ),
                 const SizedBox(height: 12),
-
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
                     padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
                     child: Text(
                       'Tipo de Espacio',
-                      style: TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600, 
-                        color: Color(0xFF4A4B22),
-                      ),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4B22)),
                     ),
                   ),
                 ),
@@ -600,9 +593,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                       value: e, 
                       child: Text(
                         e, 
-                        style: TextStyle(
-                          color: e == 'Seleccionar tipo de espacio' ? Colors.grey.shade500 : Colors.black,
-                        ),
+                        style: TextStyle(color: e == 'Seleccionar tipo de espacio' ? Colors.grey.shade500 : Colors.black),
                       ),
                     );
                   }).toList(),
@@ -611,7 +602,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
               ],
             ),
           ),
-          // PROPUESTA GRASTRONÓMICA 
+          // PROPUESTA GASTRONÓMICA 
           Step(
             title: const Text('Menú y Experiencia', style: TextStyle(fontWeight: FontWeight.bold)),
             isActive: _currentStep >= 2,
@@ -625,11 +616,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
                     child: Text(
                       'Formato del Servicio',
-                      style: TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600, 
-                        color: Color(0xFF4A4B22),
-                      ),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4B22)),
                     ),
                   ),
                 ),
@@ -657,9 +644,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                       value: e, 
                       child: Text(
                         e, 
-                        style: TextStyle(
-                          color: e == 'Seleccionar formato de servicio' ? Colors.grey.shade500 : Colors.black,
-                        ),
+                        style: TextStyle(color: e == 'Seleccionar formato de servicio' ? Colors.grey.shade500 : Colors.black),
                       ),
                     );
                   }).toList(),
@@ -724,11 +709,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     padding: EdgeInsets.only(bottom: 8.0, left: 4.0),
                     child: Text(
                       'Encargado de la Cotización',
-                      style: TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600, 
-                        color: Color(0xFF4A4B22),
-                      ),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4B22)),
                     ),
                   ),
                 ),
@@ -739,6 +720,14 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   ),
+
+                  validator: (v) {
+                    if (v == null || v == 'Sin asignar'){
+                      return 'Por favor, asigna un encargado a esta cotización';
+                    }
+                    return null;
+                  },
+
                   items: _listaEncargados.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: widget.readOnly ? null : (v) => setState(() => _encargadoSeleccionado = v!),
                 ),
@@ -755,6 +744,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
+                  
                   itemCount: _listaEncargados.length,
                   itemBuilder: (context, index) {
                     final nombre = _listaEncargados[index];
@@ -805,6 +795,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
