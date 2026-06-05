@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
 import 'core/routes/app_routes.dart';
 import 'features/dashboard/presentacion/viewmodels/report_viewmodel.dart';
@@ -16,6 +18,8 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await initializeDateFormatting('es', null);
 
   runApp(
     MultiProvider(
@@ -45,6 +49,17 @@ class ProductoraApp extends StatelessWidget {
     return MaterialApp(
       title: 'Productora Intercultural SpA',
       debugShowCheckedModeBanner: false,
+      
+      supportedLocales: const [
+        Locale('es', 'CL'),
+        Locale('es', ''),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
       theme: ThemeData(
         primaryColor: const Color(0xFF4A4B22),
         scaffoldBackgroundColor: const Color(0xFFFAF9F6),
