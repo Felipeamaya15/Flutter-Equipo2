@@ -223,6 +223,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
 
   Widget _buildDashboardTab(List<QueryDocumentSnapshot> docs, bool isMobile, double paddingValue) {
     
+    // 1. Cálculos lógicos (se mantienen iguales)
     int solicitudesActivas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
@@ -261,14 +262,17 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       }
     }).length;
 
+    // 2. Definir un espaciado dinámico y consistente
+    final double spacing = isMobile ? 16.0 : 24.0;
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(paddingValue),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: 16,
-            runSpacing: 16,
+            spacing: spacing,
+            runSpacing: spacing,
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
@@ -286,43 +290,44 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                   foregroundColor: primaryColor,
                   side: const BorderSide(color: primaryColor),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Botón suavizado
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: spacing * 1.5), // Separación estandarizada
           
           isMobile
               ? Column(
                   children: [
                     _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, double.infinity),
-                    const SizedBox(height: 16),
+                    SizedBox(height: spacing),
                     _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, double.infinity),
-                    const SizedBox(height: 16),
+                    SizedBox(height: spacing),
                     _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, double.infinity),
-                    const SizedBox(height: 16),
+                    SizedBox(height: spacing),
                     _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, double.infinity),
                   ],
                 )
               : Row(
                   children: [
                     Expanded(child: _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, null)),
-                    const SizedBox(width: 16),
+                    SizedBox(width: spacing),
                     Expanded(child: _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, null)),
-                    const SizedBox(width: 16),
+                    SizedBox(width: spacing),
                     Expanded(child: _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, null)),
-                    const SizedBox(width: 16),
+                    SizedBox(width: spacing),
                     Expanded(child: _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, null)),
                   ],
                 ),
-          const SizedBox(height: 32),
+          SizedBox(height: spacing * 1.5), // Separación estandarizada
           
           isMobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildPrioridadesBlock(docs),
-                    const SizedBox(height: 24),
+                    SizedBox(height: spacing),
                     _buildAgendaHoyBlock(),
                   ],
                 )
@@ -330,7 +335,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(flex: 4, child: _buildPrioridadesBlock(docs)),
-                    const SizedBox(width: 24),
+                    SizedBox(width: spacing),
                     Expanded(flex: 3, child: _buildAgendaHoyBlock()),
                   ],
                 ),
@@ -541,8 +546,15 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
+        border: Border.all(color: Colors.grey.shade100, width: 1.5), // Borde más suave y claro
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), // Sombra muy sutil para dar profundidad
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,17 +563,17 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: primaryColor, size: 20),
+                padding: const EdgeInsets.all(10), // Un poco más de padding en el icono
+                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: primaryColor, size: 22),
               ),
-              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
             ],
           ),
           const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -572,17 +584,24 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(16), // Misma estética redondeada
+        border: Border.all(color: Colors.grey.shade100, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: primaryColor, size: 22),
-              const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)), 
+              Icon(icon, color: primaryColor, size: 24),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)), 
             ],
           ),
           const SizedBox(height: 20),
