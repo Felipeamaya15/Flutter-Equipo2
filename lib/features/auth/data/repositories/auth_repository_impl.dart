@@ -78,4 +78,14 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<void> cambiarContrasena(String nuevaContrasena) async {
+    try {
+    // Llama al método que acabamos de agregar en tu datasource
+      await datasource.cambiarContrasena(nuevaContrasena);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

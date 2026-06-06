@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../providers/solicitudes_provider.dart'; 
 import 'generar_reporte_dialog.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:flutter_equipo2/features/auth/presentation/providers/auth_provider.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -19,7 +20,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   static const Color primaryColor = Color(0xFF4A4B22);
   static const Color backgroundColor = Color(0xFFFAF9F6);
 
-Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
+  Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     final data = doc.data() as Map<String, dynamic>;
     final docId = doc.id;
     final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
@@ -151,22 +152,59 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
             ),
           ],
         ),
+
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Cerrar Sesión',
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-
-              if (!context.mounted) return;
-
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (route) => false,
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle_rounded, color: primaryColor, size: 30),
+            tooltip: 'Menú de Usuario',
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            color: Colors.white,
+            onSelected: (String opcion) async {
+              if (opcion == 'perfil') {
+                _mostrarDialogoPerfil(context);
+              } else if (opcion == 'password') {
+                _mostrarDialogoCambiarPassword(context);
+              } else if (opcion == 'logout') {
+                await FirebaseAuth.instance.signOut();
+                if (!context.mounted) return;
+                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+              }
             },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'perfil',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded, color: Colors.grey.shade700, size: 22),
+                    const SizedBox(width: 12),
+                    const Text('Mi Perfil', style: TextStyle(fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'password',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_reset_rounded, color: Colors.grey.shade700, size: 22),
+                    const SizedBox(width: 12),
+                    const Text('Cambiar Clave', style: TextStyle(fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: const [
+                    Icon(Icons.logout_rounded, color: Colors.redAccent, size: 22),
+                    SizedBox(width: 12),
+                    Text('Cerrar Sesión', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -184,6 +222,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // SPRINT 4: RESET DE SELECCIÓN PARA CREACIÓN LIMPIA
           Provider.of<SolicitudesProvider>(context, listen: false).clearSeleccion();
           Navigator.pushNamed(context, AppRoutes.solicitudForm);
         },
@@ -199,7 +238,8 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
             return const Center(child: CircularProgressIndicator(color: primaryColor));
           }
 
-          final List<QueryDocumentSnapshot> solicitudes = provider.solicitudes;
+          // SPRINT 4: USA EL GETTER DEL FILTRO REACTIVO
+          final List<QueryDocumentSnapshot> solicitudes = provider.solicitudesFiltradas;
           final bool isMobile = MediaQuery.of(context).size.width < 800; 
           final double paddingValue = isMobile ? 16.0 : 32.0;
 
@@ -219,8 +259,6 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
   }
 
   Widget _buildDashboardTab(List<QueryDocumentSnapshot> docs, bool isMobile, double paddingValue) {
-    
-    // 1. Cálculos lógicos (se mantienen iguales)
     int solicitudesActivas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
@@ -232,18 +270,13 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
       if (estado == 'completado') return false; 
       final String asignado = (data['usuarioAsignado'] ?? '').toString().trim().toLowerCase();
-      bool estaSinAsignar = asignado.isEmpty || 
-                            asignado == 'sin asignar' || 
-                            asignado == 'null' || 
-                            asignado.contains('sin asignar');
-                            
+      bool estaSinAsignar = asignado.isEmpty || asignado == 'sin asignar' || asignado == 'null' || asignado.contains('sin asignar');
       return estaSinAsignar;
     }).length;
 
     DateTime now = DateTime.now();
     DateTime startOfWeek = now.subtract(Duration(days: now.weekday - 1)); 
     DateTime endOfWeek = startOfWeek.add(const Duration(days: 6)); 
-    
     DateTime start = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day); 
     DateTime end = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59); 
 
@@ -252,14 +285,9 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       if (data['fechaEvento'] == null) return false; 
       try {
          DateTime fecha = (data['fechaEvento'] as Timestamp).toDate();
-         return fecha.isAfter(start.subtract(const Duration(seconds: 1))) && 
-                fecha.isBefore(end.add(const Duration(seconds: 1)));
-      } catch(e) {
-         return false; 
-      }
+         return fecha.isAfter(start.subtract(const Duration(seconds: 1))) && fecha.isBefore(end.add(const Duration(seconds: 1)));
+      } catch(e) { return false; }
     }).length;
-
-    final double spacing = isMobile ? 16.0 : 24.0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(paddingValue),
@@ -267,63 +295,52 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
+            spacing: 16, runSpacing: 16,
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _buildHeader('Panel trabajador', 'Gestión diaria de solicitudes, eventos y tareas del equipo.'),
               OutlinedButton.icon(
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => const GenerarReporteDialog(),
-                  );
+                  showDialog(context: context, builder: (context) => const GenerarReporteDialog());
                 },
                 icon: const Icon(Icons.analytics_outlined, size: 18),
                 label: const Text('Reporte', style: TextStyle(fontSize: 16)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: primaryColor,
-                  side: const BorderSide(color: primaryColor),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
-                ),
+                style: OutlinedButton.styleFrom(foregroundColor: primaryColor, side: const BorderSide(color: primaryColor), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)),
               ),
             ],
           ),
-          SizedBox(height: spacing * 1.5), 
-          
+          const SizedBox(height: 32),
           isMobile
               ? Column(
                   children: [
                     _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, double.infinity),
-                    SizedBox(height: spacing),
+                    const SizedBox(height: 16),
                     _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, double.infinity),
-                    SizedBox(height: spacing),
+                    const SizedBox(height: 16),
                     _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, double.infinity),
-                    SizedBox(height: spacing),
+                    const SizedBox(height: 16),
                     _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, double.infinity),
                   ],
                 )
               : Row(
                   children: [
                     Expanded(child: _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, null)),
-                    SizedBox(width: spacing),
+                    const SizedBox(width: 16),
                     Expanded(child: _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, null)),
-                    SizedBox(width: spacing),
+                    const SizedBox(width: 16),
                     Expanded(child: _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, null)),
-                    SizedBox(width: spacing),
+                    const SizedBox(width: 16),
                     Expanded(child: _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, null)),
                   ],
                 ),
-          SizedBox(height: spacing * 1.5), // Separación estandarizada
-          
+          const SizedBox(height: 32),
           isMobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildPrioridadesBlock(docs),
-                    SizedBox(height: spacing),
+                    const SizedBox(height: 24),
                     _buildAgendaHoyBlock(),
                   ],
                 )
@@ -331,7 +348,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(flex: 4, child: _buildPrioridadesBlock(docs)),
-                    SizedBox(width: spacing),
+                    const SizedBox(width: 24),
                     Expanded(flex: 3, child: _buildAgendaHoyBlock()),
                   ],
                 ),
@@ -344,7 +361,6 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     final solicitudesAbiertas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-    
       return estado != 'completado';
     }).toList();
 
@@ -353,7 +369,6 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       final dataB = b.data() as Map<String, dynamic>;
       final Timestamp fechaA = dataA['creado_en'] ?? Timestamp.now();
       final Timestamp fechaB = dataB['creado_en'] ?? Timestamp.now();
-
       return fechaA.compareTo(fechaB);
     });
 
@@ -363,12 +378,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       child: solicitudesAbiertas.isEmpty
           ? const Padding(
               padding: EdgeInsets.all(16.0),
-              child: Center(
-                child: Text(
-                  '¡Excelente! Todas las solicitudes están completadas.',
-                  style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
-                ),
-              ),
+              child: Center(child: Text('¡Excelente! Todas las solicitudes están completadas.', style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic))),
             )
           : ListView.builder(
               shrinkWrap: true,
@@ -388,9 +398,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
 
                 return _buildPriorityItem(
                   title: tipoCatering,
-                  subtitle: esMuyAntigua 
-                      ? '⚠️ Tiempo de asignación excedido' 
-                      : 'Cliente: $emailCliente',
+                  subtitle: esMuyAntigua ? '⚠️ Tiempo de asignación excedido' : 'Cliente: $emailCliente',
                   tag: esMuyAntigua ? 'ALTA' : etiqueta,
                   tagColor: esMuyAntigua ? Colors.redAccent : (etiqueta == 'En proceso' ? Colors.blue : Colors.orange),
                   trailingAction: const SizedBox.shrink(),
@@ -420,7 +428,22 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader('Bandeja de Solicitudes', 'Listado maestro de asignaciones de formularios.'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: _buildHeader('Bandeja de Solicitudes', 'Listado maestro de asignaciones de formularios.')),
+              TextButton.icon(
+                onPressed: () => _mostrarHistorialCompletadas(context),
+                icon: const Icon(Icons.history_rounded, color: primaryColor),
+                label: const Text('Ver Historial', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  backgroundColor: primaryColor.withAlpha(20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: docs.isEmpty
@@ -432,10 +455,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                           padding: EdgeInsets.zero,
                           physics: const BouncingScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 450,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 2.3,
+                            maxCrossAxisExtent: 450, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 2.3,
                           ),
                           itemCount: docs.length,
                           itemBuilder: (context, index) {
@@ -443,7 +463,6 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                           },
                         );
                       }
-
                       return ListView.separated(
                         padding: EdgeInsets.zero,
                         physics: const BouncingScrollPhysics(),
@@ -461,7 +480,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     );
   }
 
- Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
+  Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
     final eventosConFecha = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       return data['fechaEvento'] != null;
@@ -496,15 +515,12 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                       final String emailCliente = data['emailCliente'] ?? 'Sin correo';
                       final String tipoCatering = data['nombreEvento'] ?? 'Logística de Evento';
 
-                      return Container(
+                      return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade200)),
+                        clipBehavior: Clip.antiAlias,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
                           onTap: () {
                             Provider.of<SolicitudesProvider>(context, listen: false).seleccionarSolicitud(doc);
                             Navigator.pushNamed(context, AppRoutes.solicitudForm);
@@ -558,36 +574,21 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     return Container(
       width: width,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16), 
-        border: Border.all(color: Colors.grey.shade100, width: 1.5), 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03), 
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10), 
-                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: primaryColor, size: 22),
-              ),
-              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: primaryColor, size: 20)),
+              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey)),
             ],
           ),
           const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ],
       ),
     );
@@ -596,28 +597,11 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
   Widget _buildDashboardBlock({required String title, required IconData icon, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16), 
-        border: Border.all(color: Colors.grey.shade100, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: primaryColor, size: 24),
-              const SizedBox(width: 10),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)), 
-            ],
-          ),
+          Row(children: [Icon(icon, color: primaryColor, size: 22), const SizedBox(width: 8), Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor))]),
           const SizedBox(height: 20),
           child,
         ],
@@ -649,17 +633,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
               ],
             ),
           ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: tagColor.withAlpha(26), borderRadius: BorderRadius.circular(4)),
-                child: Text(tag, style: TextStyle(color: tagColor, fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 4),
-              trailingAction,
-            ],
-          ),
+          Row(children: [Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: tagColor.withAlpha(26), borderRadius: BorderRadius.circular(4)), child: Text(tag, style: TextStyle(color: tagColor, fontSize: 12, fontWeight: FontWeight.bold))), const SizedBox(width: 4), trailingAction]),
         ],
       ),
     );
@@ -690,6 +664,161 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
             ),
           ),
           Text(time, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDialogoPerfil(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final String emailUsuario = user?.email ?? 'correo@productora.cl';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.badge_rounded, color: primaryColor),
+            SizedBox(width: 10),
+            Text('Información del Usuario', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 20)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 35,
+                backgroundColor: primaryColor.withAlpha(30),
+                child: const Icon(Icons.person, size: 40, color: primaryColor),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Rol en la Empresa:', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            const Text('Operador / Trabajador Autorizado', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text('Correo Electrónico:', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Text(emailUsuario, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDialogoCambiarPassword(BuildContext context) {
+    final TextEditingController passwordController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Actualizar Contraseña', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Por seguridad, ingresa una clave nueva que tenga al menos 6 caracteres.'),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Nueva Contraseña',
+                        prefixIcon: const Icon(Icons.lock_outline, color: primaryColor),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 2)),
+                      ),
+                      validator: (val) => (val == null || val.trim().length < 6) ? 'Mínimo 6 caracteres.' : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      try {
+                        await Provider.of<AuthProvider>(context, listen: false).actualizarContrasenaTrabajador(passwordController.text.trim());
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña modificada con éxito'), backgroundColor: Colors.green));
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                      }
+                    }
+                  },
+                  child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  void _mostrarHistorialCompletadas(BuildContext context) {
+    // Consumimos la nueva lista que acabas de crear en el Provider
+    final completadas = Provider.of<SolicitudesProvider>(context, listen: false).solicitudesCompletadas;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.inventory_2_rounded, color: primaryColor),
+            SizedBox(width: 10),
+            Text('Historial de Eventos', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: completadas.isEmpty
+              ? const Center(child: Text('Aún no hay eventos completados.', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: completadas.length,
+                  itemBuilder: (context, index) {
+                    final data = completadas[index].data() as Map<String, dynamic>;
+                    final String folio = data['folio'] ?? 'S/N';
+                    final String email = data['emailCliente'] ?? 'Sin correo';
+                    final String tipo = data['nombreEvento'] ?? 'Evento';
+                    
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.check, color: Colors.white, size: 20)),
+                      title: Text(tipo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('Folio: #$folio | $email'),
+                      trailing: const Text('Completado', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
