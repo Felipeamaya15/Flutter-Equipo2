@@ -43,11 +43,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // 1. Guardamos la solicitud cliqueada en el Provider
-          // Usamos listen: false porque estamos dentro de un evento de toque, no dibujando UI aquí
           Provider.of<SolicitudesProvider>(context, listen: false).seleccionarSolicitud(doc);
-          
-          // 2. Navegamos a la pantalla del formulario que configuramos como "Modo Detalle"
           Navigator.pushNamed(context, AppRoutes.solicitudForm);
         },
         child: Padding(
@@ -188,6 +184,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          Provider.of<SolicitudesProvider>(context, listen: false).clearSeleccion();
           Navigator.pushNamed(context, AppRoutes.solicitudForm);
         },
         backgroundColor: primaryColor,
@@ -262,7 +259,6 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       }
     }).length;
 
-    // 2. Definir un espaciado dinámico y consistente
     final double spacing = isMobile ? 16.0 : 24.0;
 
     return SingleChildScrollView(
@@ -290,12 +286,12 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                   foregroundColor: primaryColor,
                   side: const BorderSide(color: primaryColor),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Botón suavizado
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
                 ),
               ),
             ],
           ),
-          SizedBox(height: spacing * 1.5), // Separación estandarizada
+          SizedBox(height: spacing * 1.5), 
           
           isMobile
               ? Column(
@@ -465,11 +461,19 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
     );
   }
 
-  Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
+ Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
     final eventosConFecha = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       return data['fechaEvento'] != null;
     }).toList();
+
+    eventosConFecha.sort((a, b) {
+      final dataA = a.data() as Map<String, dynamic>;
+      final dataB = b.data() as Map<String, dynamic>;
+      final Timestamp fechaA = dataA['fechaEvento'] as Timestamp;
+      final Timestamp fechaB = dataB['fechaEvento'] as Timestamp;
+      return fechaA.compareTo(fechaB);
+    });
 
     return Padding(
       padding: EdgeInsets.all(paddingValue),
@@ -484,8 +488,9 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
                 : ListView.builder(
                     itemCount: eventosConFecha.length,
                     itemBuilder: (context, index) {
-                      final data = eventosConFecha[index].data() as Map<String, dynamic>;
-                      final docId = eventosConFecha[index].id;
+                      final doc = eventosConFecha[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final docId = doc.id;
                       final DateTime fecha = (data['fechaEvento'] as Timestamp).toDate();
                       final String folio = data['folio'] ?? docId.substring(0, 5).toUpperCase();
                       final String emailCliente = data['emailCliente'] ?? 'Sin correo';
@@ -493,32 +498,41 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
 
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey.shade200),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(color: primaryColor.withAlpha(26), borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.calendar_month, color: primaryColor, size: 28),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            Provider.of<SolicitudesProvider>(context, listen: false).seleccionarSolicitud(doc);
+                            Navigator.pushNamed(context, AppRoutes.solicitudForm);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(color: primaryColor.withAlpha(26), borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.calendar_month, color: primaryColor, size: 28),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(tipoCatering, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 4),
+                                      Text('Fecha: ${fecha.day}/${fecha.month}/${fecha.year} - $emailCliente', style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                                    ],
+                                  ),
+                                ),
+                                Text('#$folio', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              ],
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(tipoCatering, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
-                                  Text('Fecha: ${fecha.day}/${fecha.month}/${fecha.year} - $emailCliente', style: const TextStyle(fontSize: 14, color: Colors.black87)),
-                                ],
-                              ),
-                            ),
-                            Text('#$folio', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          ],
+                          ),
                         ),
                       );
                     },
@@ -546,11 +560,11 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
-        border: Border.all(color: Colors.grey.shade100, width: 1.5), // Borde más suave y claro
+        borderRadius: BorderRadius.circular(16), 
+        border: Border.all(color: Colors.grey.shade100, width: 1.5), 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03), // Sombra muy sutil para dar profundidad
+            color: Colors.black.withOpacity(0.03), 
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -563,7 +577,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10), // Un poco más de padding en el icono
+                padding: const EdgeInsets.all(10), 
                 decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, color: primaryColor, size: 22),
               ),
@@ -584,7 +598,7 @@ Widget _buildSolicitudCard(QueryDocumentSnapshot doc, BuildContext context) {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16), // Misma estética redondeada
+        borderRadius: BorderRadius.circular(16), 
         border: Border.all(color: Colors.grey.shade100, width: 1.5),
         boxShadow: [
           BoxShadow(
