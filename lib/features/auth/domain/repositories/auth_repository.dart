@@ -16,4 +16,6 @@ abstract class AuthRepository {
   AppUser? getCurrentUser();
 
   Future<void> recuperarContrasena(String email);
+
+  Future<void> cambiarContrasena(String nuevaContrasena);
 }

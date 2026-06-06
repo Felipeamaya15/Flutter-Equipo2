@@ -8,11 +8,39 @@ class SolicitudesProvider extends ChangeNotifier {
 
   QueryDocumentSnapshot? _solicitudSeleccionada;
 
+  bool _ocultarCompletadas = true;
+
   List<QueryDocumentSnapshot> get solicitudes => _solicitudes;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  
   QueryDocumentSnapshot? get solicitudSeleccionada => _solicitudSeleccionada;
+
+  bool get ocultarCompletadas => _ocultarCompletadas;
+
+  List<QueryDocumentSnapshot> get solicitudesFiltradas {
+    if (_ocultarCompletadas) {
+      return _solicitudes.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
+        // Remueve automáticamente de la vista las que están completadas
+        return estado != 'completado';
+      }).toList();
+    }
+    return _solicitudes;
+  }
+
+  List<QueryDocumentSnapshot> get solicitudesCompletadas {
+    return _solicitudes.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final String estado = (data['estado'] ?? '').toString().trim().toLowerCase();
+      return estado == 'completado';
+    }).toList();
+  }
+
+  void toggleFiltroCompletadas(bool valor) {
+    _ocultarCompletadas = valor;
+    notifyListeners();
+  }
 
   SolicitudesProvider() {
     _initStream();

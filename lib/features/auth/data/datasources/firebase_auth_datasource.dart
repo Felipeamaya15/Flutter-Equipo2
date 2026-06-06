@@ -51,4 +51,26 @@ class FirebaseAuthDatasource {
       throw 'Ocurrió un error inesperado al procesar la solicitud.';
     }
   }
+
+  //Método para cambiar la contraseña del usuario con sesión activa
+  Future<void> cambiarContrasena(String nuevaContrasena) async {
+    final User? user = firebaseAuth.currentUser;
+
+    if (user == null) {
+      throw 'No se detectó ninguna sesión activa de trabajador.';
+    }
+
+    try {
+      await user.updatePassword(nuevaContrasena.trim());
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw 'Por motivos de seguridad, debes cerrar sesión e iniciar de nuevo para cambiar tu clave.';
+      } else if (e.code == 'weak-password') {
+        throw 'La contraseña ingresada es muy débil. Intenta con otra.';
+      }
+      throw 'Error al actualizar: ${e.message}';
+    } catch (e) {
+      throw 'Ocurrió un error inesperado al procesar el cambio de contraseña.';
+    }
+  }
 }
