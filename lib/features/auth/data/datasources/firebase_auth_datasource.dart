@@ -1,4 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import '../../../../firebase_options.dart';
 
 class FirebaseAuthDatasource {
   final FirebaseAuth firebaseAuth;
@@ -12,19 +15,54 @@ class FirebaseAuthDatasource {
     required String password,
   }) {
     return firebaseAuth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
+      email: email.trim(),
+      password: password.trim(),
     );
   }
 
   Future<UserCredential> register({
     required String email,
     required String password,
-  }) {
-    return firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  }) async {
+    FirebaseApp? secondaryApp;
+
+    try {
+      secondaryApp = await Firebase.initializeApp(
+        name: 'secondary-auth-worker',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      final userCredential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      await secondaryAuth.signOut();
+
+      return userCredential;
+    } on FirebaseException catch (e) {
+      if (e.code == 'duplicate-app') {
+        secondaryApp = Firebase.app('secondary-auth-worker');
+
+        final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+        final userCredential =
+            await secondaryAuth.createUserWithEmailAndPassword(
+          email: email.trim(),
+          password: password.trim(),
+        );
+
+        await secondaryAuth.signOut();
+
+        return userCredential;
+      }
+
+      rethrow;
+    } finally {
+      await secondaryApp?.delete();
+    }
   }
 
   Future<void> signOut() {
@@ -34,6 +72,7 @@ class FirebaseAuthDatasource {
   User? getCurrentUser() {
     return firebaseAuth.currentUser;
   }
+
   // Método para enviar el correo de recuperación de contraseña
   Future<void> recuperarContrasena(String email) async {
     try {
@@ -52,7 +91,7 @@ class FirebaseAuthDatasource {
     }
   }
 
-  //Método para cambiar la contraseña del usuario con sesión activa
+  // Método para cambiar la contraseña del usuario con sesión activa
   Future<void> cambiarContrasena(String nuevaContrasena) async {
     final User? user = firebaseAuth.currentUser;
 

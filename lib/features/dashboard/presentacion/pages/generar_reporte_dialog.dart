@@ -1,4 +1,6 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/report_viewmodel.dart';
 
 class GenerarReporteDialog extends StatefulWidget {
   const GenerarReporteDialog({super.key});
@@ -37,24 +39,32 @@ class _GenerarReporteDialogState extends State<GenerarReporteDialog> {
   }
 
   void _exportarReporte() {
-    if (_desde == null || _hasta == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona rango de fechas antes de exportar.'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-    if (_hasta!.isBefore(_desde!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El rango de fechas no es válido.'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
+  final reportViewModel = context.read<ReportViewModel>();
 
-    Navigator.pop(context);
+  final rangoValido = reportViewModel.validarRangoFechas(_desde, _hasta);
+
+  if (!rangoValido) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Descargando reporte en formato PDF...'), backgroundColor: primaryColor),
+      SnackBar(
+        content: Text(reportViewModel.errorMessage ?? 'El rango de fechas no es válido.'),
+        backgroundColor: Colors.redAccent,
+      ),
     );
+    return;
   }
+
+  Navigator.pop(context);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Descargando reporte en formato PDF...'),
+      backgroundColor: primaryColor,
+    ),
+  );
+
+  // Aquí debe continuar la lógica real de generación/descarga del PDF,
+  // si el proyecto ya la tiene implementada.
+}
 
   @override
   Widget build(BuildContext context) {
