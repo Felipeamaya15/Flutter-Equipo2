@@ -1,14 +1,20 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class ReportViewModel extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  StreamSubscription<QuerySnapshot>? _subscription;
+  final FirebaseFirestore? _firestore;
+
+  ReportViewModel({FirebaseFirestore? firestore}) : _firestore = firestore;
+
+  FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
+
+  StreamSubscription? _subscription;
 
   bool isLoading = true;
   String? errorMessage;
-  
+
   int totalSolicitudes = 0;
   int pendientes = 0;
   int enProceso = 0;
@@ -19,8 +25,18 @@ class ReportViewModel extends ChangeNotifier {
   Map<String, int> eventosPorMes = {};
 
   final List<String> _nombreMeses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   void initSnapshotListener() {
@@ -28,48 +44,59 @@ class ReportViewModel extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    _subscription = _firestore.collection('solicitudes').snapshots().listen(
+    _subscription = firestore.collection('solicitudes').snapshots().listen(
       (snapshot) {
         final docs = snapshot.docs;
+
         totalSolicitudes = docs.length;
 
-        // GRAFICO DE TORTA ESTADO DE SOLICITUDES
+        // Gráfico de torta: estado de solicitudes
         pendientes = docs.where((doc) {
-          final estado = (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
+          final estado =
+              (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
           return estado == 'pendiente';
         }).length;
 
         enProceso = docs.where((doc) {
-          final estado = (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
+          final estado =
+              (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
           return estado == 'en proceso' || estado == 'en_proceso';
         }).length;
 
         completadas = docs.where((doc) {
-          final estado = (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
+          final estado =
+              (doc.data()['estado'] ?? '').toString().trim().toLowerCase();
           return estado == 'completado';
         }).length;
 
-        // GRAFICO DE BARRAS ASIGNACIÓN DE COTIZACIONES
+        // Gráfico de barras: asignación de cotizaciones
         solicitudesSinAsignar = docs.where((doc) {
-          final asignado = (doc.data()['usuarioAsignado'] ?? '').toString().trim().toLowerCase();
-          return asignado.isEmpty || asignado == 'sin asignar' || asignado == 'null';
+          final asignado = (doc.data()['usuarioAsignado'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+          return asignado.isEmpty ||
+              asignado == 'sin asignar' ||
+              asignado == 'null';
         }).length;
 
         solicitudesAsignadas = totalSolicitudes - solicitudesSinAsignar;
 
-        // GRAFICO DE BARRAS CRONOLÓGICO DE LOS EVENTOS POR MES
+        // Gráfico cronológico: eventos por mes
         eventosPorMes.clear();
-        
-        final docsConFecha = docs.where((doc) => doc.data()['fecha_evento'] != null);
 
-        for (var doc in docsConFecha) {
+        final docsConFecha =
+            docs.where((doc) => doc.data()['fecha_evento'] != null);
+
+        for (final doc in docsConFecha) {
           try {
             final Timestamp timestamp = doc.data()['fecha_evento'] as Timestamp;
             final DateTime fecha = timestamp.toDate();
             final String mesClave = _nombreMeses[fecha.month - 1];
-            
+
             eventosPorMes[mesClave] = (eventosPorMes[mesClave] ?? 0) + 1;
-          } catch (e) {
+          } catch (_) {
             continue;
           }
         }
@@ -86,24 +113,28 @@ class ReportViewModel extends ChangeNotifier {
     );
   }
 
+  bool validarRangoFechas(DateTime? fechaDesde, DateTime? fechaHasta) {
+    if (fechaDesde == null || fechaHasta == null) {
+      errorMessage = 'Debes seleccionar ambas fechas para generar el reporte.';
+      notifyListeners();
+      return false;
+    }
+
+    if (fechaDesde.isAfter(fechaHasta)) {
+      errorMessage =
+          'La fecha "Desde" no puede ser posterior a la fecha "Hasta".';
+      notifyListeners();
+      return false;
+    }
+
+    errorMessage = null;
+    notifyListeners();
+    return true;
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
     super.dispose();
-  }
-
-  // Corrección para evitar rangos de fecha imposibles
-  bool validarRangoFechas(DateTime fechaDesde, DateTime fechaHasta) {
-    if (fechaDesde.isAfter(fechaHasta)) {
-      errorMessage = 'Error: La fecha "Desde" no puede ser mayor que la fecha "Hasta".';
-      notifyListeners();
-      return false; // Bloquea la descarga si el rango está al revés
-    }
-    
-    // Si las fechas están bien y había un error de fechas guardado antes, lo limpia
-    if (errorMessage != null && errorMessage!.contains('La fecha')) {
-      errorMessage = null;
-    }
-    return true; // Rango correcto, permite continuar
   }
 }
