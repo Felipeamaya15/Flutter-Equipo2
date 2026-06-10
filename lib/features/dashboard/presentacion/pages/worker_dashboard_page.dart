@@ -30,16 +30,24 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
 
     final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
     String estadoValido = 'Pendiente';
+    Color colorEstado = Colors.orange; 
     
     if (estadoRaw == 'en proceso' || estadoRaw == 'en_proceso') {
       estadoValido = 'En proceso';
+      colorEstado = Colors.blue;
     } else if (estadoRaw == 'completado') {
       estadoValido = 'Completado';
+      colorEstado = Colors.green;
     }
 
+    final List<String> opcionesEstado = ['Pendiente', 'En proceso', 'Completado'];
+
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0, 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200), 
+      ),
       color: Colors.white,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -58,30 +66,46 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
                   initialValue: estadoValido,
+                  icon: Icon(Icons.arrow_drop_down, color: colorEstado),
+                  
+                  dropdownColor: Colors.grey.shade100, 
+                  
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: colorEstado.withAlpha(20), 
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colorEstado.withAlpha(50))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colorEstado.withAlpha(50))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colorEstado, width: 2)),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Pendiente', child: Text('Pendiente')),
-                    DropdownMenuItem(value: 'En proceso', child: Text('En proceso')),
-                    DropdownMenuItem(value: 'Completado', child: Text('Completado')),
-                  ],
+                  
+                  selectedItemBuilder: (BuildContext context) {
+                    return opcionesEstado.map<Widget>((String item) {
+                      return Text(
+                        item,
+                        style: TextStyle(color: colorEstado, fontWeight: FontWeight.bold, fontSize: 14),
+                      );
+                    }).toList();
+                  },
+
+                  items: opcionesEstado.map((String val) {
+                    return DropdownMenuItem(
+                      value: val, 
+                      child: Text(
+                        val, 
+                        style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.w500, fontSize: 14)
+                      ),
+                    );
+                  }).toList(),
+
                   onChanged: (nuevoEstado) async {
-                    if (nuevoEstado != null) {
+                    if (nuevoEstado != null && nuevoEstado != estadoValido) {
                       try {
                         await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': nuevoEstado});
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Estado actualizado correctamente'), backgroundColor: Colors.green),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Estado actualizado correctamente'), backgroundColor: Colors.green));
                       } catch (e) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error al cambiar estado: $e'), backgroundColor: Colors.red),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al cambiar estado: $e'), backgroundColor: Colors.red));
                       }
                     }
                   },
@@ -152,7 +176,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
             ),
           ],
         ),
-
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle_rounded, color: primaryColor, size: 30),
@@ -165,9 +188,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
               } else if (opcion == 'password') {
                 _mostrarDialogoCambiarPassword(context);
               } else if (opcion == 'logout') {
-                await FirebaseAuth.instance.signOut();
-                if (!context.mounted) return;
-                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+                _mostrarConfirmacionLogout(context);
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -220,14 +241,14 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Agenda'),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // SPRINT 4: RESET DE SELECCIÓN PARA CREACIÓN LIMPIA
           Provider.of<SolicitudesProvider>(context, listen: false).clearSeleccion();
           Navigator.pushNamed(context, AppRoutes.solicitudForm);
         },
         backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text('Nueva Solicitud', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: Consumer<SolicitudesProvider>(
         builder: (context, provider, child) {
@@ -238,7 +259,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
             return const Center(child: CircularProgressIndicator(color: primaryColor));
           }
 
-          // SPRINT 4: USA EL GETTER DEL FILTRO REACTIVO
           final List<QueryDocumentSnapshot> solicitudes = provider.solicitudesFiltradas;
           final bool isMobile = MediaQuery.of(context).size.width < 800; 
           final double paddingValue = isMobile ? 16.0 : 32.0;
@@ -323,90 +343,124 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
           ),
           
           SizedBox(height: spacing * 1.5), 
-          
-          // Bloques inferiores (Prioridades y Agenda) se mantienen igual
-          isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildPrioridadesBlock(docs),
-                    SizedBox(height: spacing),
-                    _buildAgendaHoyBlock(),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 4, child: _buildPrioridadesBlock(docs)),
-                    SizedBox(width: spacing),
-                    Expanded(flex: 3, child: _buildAgendaHoyBlock()),
-                  ],
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: _buildProximosEventosBlock(docs),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPrioridadesBlock(List<QueryDocumentSnapshot> docs) {
-    final solicitudesAbiertas = docs.where((doc) {
+  Widget _buildProximosEventosBlock(List<QueryDocumentSnapshot> docs) {
+    // 1. Filtrar eventos que no estén completados y que tengan fecha asignada
+    final eventosFuturos = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-      return estado != 'completado';
+      final String estado = (data['estado'] ?? '').toString().trim().toLowerCase();
+      return estado != 'completado' && data['fechaEvento'] != null;
     }).toList();
 
-    solicitudesAbiertas.sort((a, b) {
-      final dataA = a.data() as Map<String, dynamic>;
-      final dataB = b.data() as Map<String, dynamic>;
-      final Timestamp fechaA = dataA['creado_en'] ?? Timestamp.now();
-      final Timestamp fechaB = dataB['creado_en'] ?? Timestamp.now();
+    // 2. Ordenar cronológicamente (el más próximo primero)
+    eventosFuturos.sort((a, b) {
+      final Timestamp fechaA = (a.data() as Map<String, dynamic>)['fechaEvento'] as Timestamp;
+      final Timestamp fechaB = (b.data() as Map<String, dynamic>)['fechaEvento'] as Timestamp;
       return fechaA.compareTo(fechaB);
     });
 
+    final topEventos = eventosFuturos.take(5).toList();
+
     return _buildDashboardBlock(
-      title: 'Prioridades operativas',
-      icon: Icons.check_circle_outline_rounded,
-      child: solicitudesAbiertas.isEmpty
+      title: 'Próximos Eventos',
+      icon: Icons.event_available_rounded,
+      child: topEventos.isEmpty
           ? const Padding(
               padding: EdgeInsets.all(16.0),
-              child: Center(child: Text('¡Excelente! Todas las solicitudes están completadas.', style: TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic))),
+              child: Center(
+                child: Text(
+                  'No hay eventos programados próximamente.',
+                  style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+              ),
             )
           : ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: solicitudesAbiertas.length > 3 ? 3 : solicitudesAbiertas.length,
+              itemCount: topEventos.length,
               itemBuilder: (context, index) {
-                final data = solicitudesAbiertas[index].data() as Map<String, dynamic>;
+                final data = topEventos[index].data() as Map<String, dynamic>;
+                final DateTime fecha = (data['fechaEvento'] as Timestamp).toDate();
+                final String nombreEvento = data['nombreEvento'] ?? 'Logística de Evento';
                 final String emailCliente = data['emailCliente'] ?? 'Sin correo';
-                final String rawTipo = data['nombreEvento'] ?? '';
-                final String tipoCatering = rawTipo.isNotEmpty ? rawTipo : 'Logística para $emailCliente';
-                final Timestamp creadoEn = data['creado_en'] ?? Timestamp.now();
-                final DateTime fechaCreacion = creadoEn.toDate();
-                final Duration tiempoEspera = DateTime.now().difference(fechaCreacion);
-                bool esMuyAntigua = tiempoEspera.inHours >= 24;
-                final String estadoRaw = (data['estado'] ?? 'Pendiente').toString().trim();
-                String etiqueta = estadoRaw.toLowerCase() == 'en proceso' || estadoRaw.toLowerCase() == 'en_proceso' ? 'En proceso' : 'Pendiente';
+                
+                // Formateo de fecha (Ej: 28/06) y hora (Ej: 15:30)
+                final String diaMes = "${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}";
+                final String horaStr = "${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}";
 
-                return _buildPriorityItem(
-                  title: tipoCatering,
-                  subtitle: esMuyAntigua ? '⚠️ Tiempo de asignación excedido' : 'Cliente: $emailCliente',
-                  tag: esMuyAntigua ? 'ALTA' : etiqueta,
-                  tagColor: esMuyAntigua ? Colors.redAccent : (etiqueta == 'En proceso' ? Colors.blue : Colors.orange),
-                  trailingAction: const SizedBox.shrink(),
+                // Lógica de colores según qué tan pronto es el evento
+                final int diasFaltantes = fecha.difference(DateTime.now()).inDays;
+                Color dotColor = primaryColor;
+                if (diasFaltantes < 0) {
+                  dotColor = Colors.redAccent; // Atrasado o en curso
+                } else if (diasFaltantes <= 3) {
+                  dotColor = Colors.orange; // Muy próximo
+                } else {
+                  dotColor = Colors.teal; // Aún hay tiempo
+                }
+
+                return _buildNuevoAgendaItem(
+                  title: nombreEvento,
+                  location: emailCliente,
+                  date: diaMes,
+                  time: horaStr,
+                  dotColor: dotColor,
                 );
               },
             ),
     );
   }
 
-  Widget _buildAgendaHoyBlock() {
-    return _buildDashboardBlock(
-      title: 'Agenda de hoy',
-      icon: Icons.access_time_rounded,
-      child: Column(
+  Widget _buildNuevoAgendaItem({required String title, required String location, required String date, required String time, required Color dotColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade100))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildAgendaItem('Degustación cliente', 'Sala norte', '09:00', Colors.amber),
-          _buildAgendaItem('Despacho insumos', 'Bodega central', '13:00', Colors.green),
-          _buildAgendaItem('Cierre de propuesta', 'Fund. Raíces', '16:30', Colors.brown),
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 12, height: 12,
+                  decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text(location, style: const TextStyle(fontSize: 13, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: dotColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(10)
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(date, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: dotColor)),
+                Text(time, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: dotColor.withAlpha(200))),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -560,7 +614,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     );
   }
 
-Widget _buildMetricCard(String title, String value, String trend, IconData icon, Color bg, double? width) {
+  Widget _buildMetricCard(String title, String value, String trend, IconData icon, Color bg, double? width) {
     return Container(
       width: width,
       padding: const EdgeInsets.all(20),
@@ -592,7 +646,7 @@ Widget _buildMetricCard(String title, String value, String trend, IconData icon,
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: Colors.white, size: 22), // Ícono en blanco
+                child: Icon(icon, color: Colors.white, size: 22),
               ),
               Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
             ],
@@ -616,66 +670,6 @@ Widget _buildMetricCard(String title, String value, String trend, IconData icon,
           Row(children: [Icon(icon, color: primaryColor, size: 22), const SizedBox(width: 8), Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor))]),
           const SizedBox(height: 20),
           child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriorityItem({required String title, required String subtitle, required String tag, required Color tagColor, required Widget trailingAction}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade100))),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: tagColor, shape: BoxShape.circle)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                      Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Row(children: [Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: tagColor.withAlpha(26), borderRadius: BorderRadius.circular(4)), child: Text(tag, style: TextStyle(color: tagColor, fontSize: 12, fontWeight: FontWeight.bold))), const SizedBox(width: 4), trailingAction]),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAgendaItem(String title, String location, String time, Color dotColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade100))),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                      Text(location, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(time, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
         ],
       ),
     );
@@ -787,8 +781,33 @@ Widget _buildMetricCard(String title, String value, String trend, IconData icon,
     );
   }
 
+  void _mostrarConfirmacionLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('¿Cerrar Sesión?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Tendrás que volver a ingresar tus credenciales para acceder al panel.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (!context.mounted) return;
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+            },
+            child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _mostrarHistorialCompletadas(BuildContext context) {
-    // Consumimos la nueva lista que acabas de crear en el Provider
     final completadas = Provider.of<SolicitudesProvider>(context, listen: false).solicitudesCompletadas;
 
     showDialog(
