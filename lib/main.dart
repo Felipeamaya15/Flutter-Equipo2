@@ -11,6 +11,7 @@ import 'features/dashboard/presentacion/providers/solicitudes_provider.dart';
 import 'features/auth/data/datasources/firebase_auth_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,8 +63,10 @@ class ProductoraApp extends StatelessWidget {
 
       theme: ThemeData(
         primaryColor: const Color(0xFF4A4B22),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4A4B22)), // Mantiene la armonía de colores en Material 3
         scaffoldBackgroundColor: const Color(0xFFFAF9F6),
         useMaterial3: true,
+        textTheme: GoogleFonts.poppinsTextTheme(), 
       ),
       initialRoute: AppRoutes.root, 
       onGenerateRoute: AppRoutes.generateRoute,

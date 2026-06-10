@@ -259,19 +259,11 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   }
 
   Widget _buildDashboardTab(List<QueryDocumentSnapshot> docs, bool isMobile, double paddingValue) {
+    
     int solicitudesActivas = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
       return estado != 'completado' && estado.isNotEmpty; 
-    }).length;
-
-    int pendientesAsignar = docs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-      if (estado == 'completado') return false; 
-      final String asignado = (data['usuarioAsignado'] ?? '').toString().trim().toLowerCase();
-      bool estaSinAsignar = asignado.isEmpty || asignado == 'sin asignar' || asignado == 'null' || asignado.contains('sin asignar');
-      return estaSinAsignar;
     }).length;
 
     DateTime now = DateTime.now();
@@ -289,13 +281,15 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       } catch(e) { return false; }
     }).length;
 
+    final double spacing = isMobile ? 16.0 : 24.0;
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(paddingValue),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: 16, runSpacing: 16,
+            spacing: spacing, runSpacing: spacing,
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
@@ -306,41 +300,37 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                 },
                 icon: const Icon(Icons.analytics_outlined, size: 18),
                 label: const Text('Reporte', style: TextStyle(fontSize: 16)),
-                style: OutlinedButton.styleFrom(foregroundColor: primaryColor, side: const BorderSide(color: primaryColor), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: primaryColor, side: const BorderSide(color: primaryColor), 
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          isMobile
-              ? Column(
-                  children: [
-                    _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, double.infinity),
-                    const SizedBox(height: 16),
-                    _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, double.infinity),
-                    const SizedBox(height: 16),
-                    _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, double.infinity),
-                    const SizedBox(height: 16),
-                    _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, double.infinity),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(child: _buildMetricCard('Solicitudes activas', '$solicitudesActivas', 'En curso', Icons.assignment_outlined, Colors.teal.shade50, null)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildMetricCard('Eventos de la semana', '$eventosSemanaCount', 'Esta semana', Icons.calendar_today_rounded, Colors.orange.shade50, null)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildMetricCard('Solicitudes por asignar', '$pendientesAsignar', 'Requiere operador', Icons.gavel_rounded, Colors.red.shade50, null)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildMetricCard('Satisfacción', '94%', 'último mes', Icons.verified_outlined, Colors.green.shade50, null)),
-                  ],
-                ),
-          const SizedBox(height: 32),
+          SizedBox(height: spacing * 1.5), 
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricCard('En proceso', '$solicitudesActivas', 'Activas', Icons.assignment_outlined, Colors.teal.shade50, null),
+              ),
+              SizedBox(width: spacing),
+              Expanded(
+                child: _buildMetricCard('Eventos', '$eventosSemanaCount', 'Semana', Icons.calendar_today_rounded, Colors.orange.shade50, null),
+              ),
+            ],
+          ),
+          
+          SizedBox(height: spacing * 1.5), 
+          
+          // Bloques inferiores (Prioridades y Agenda) se mantienen igual
           isMobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildPrioridadesBlock(docs),
-                    const SizedBox(height: 24),
+                    SizedBox(height: spacing),
                     _buildAgendaHoyBlock(),
                   ],
                 )
@@ -348,7 +338,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(flex: 4, child: _buildPrioridadesBlock(docs)),
-                    const SizedBox(width: 24),
+                    SizedBox(width: spacing),
                     Expanded(flex: 3, child: _buildAgendaHoyBlock()),
                   ],
                 ),
@@ -570,25 +560,47 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, String trend, IconData icon, Color bg, double? width) {
+Widget _buildMetricCard(String title, String value, String trend, IconData icon, Color bg, double? width) {
     return Container(
       width: width,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16), 
+        border: Border.all(color: Colors.grey.shade100, width: 1.5), 
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), 
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: primaryColor, size: 20)),
-              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Container(
+                padding: const EdgeInsets.all(10), 
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [primaryColor.withOpacity(0.7), primaryColor],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22), // Ícono en blanco
+              ),
+              Text(trend, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
             ],
           ),
           const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -774,7 +786,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       },
     );
   }
-  
+
   void _mostrarHistorialCompletadas(BuildContext context) {
     // Consumimos la nueva lista que acabas de crear en el Provider
     final completadas = Provider.of<SolicitudesProvider>(context, listen: false).solicitudesCompletadas;
