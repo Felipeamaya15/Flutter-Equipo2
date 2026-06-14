@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart'; 
 import 'package:flutter_equipo2/core/utils/validators.dart';
 
 class ReusableSolicitudForm extends StatefulWidget {
@@ -33,7 +34,6 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   late final TextEditingController _direccionComercialController;
   late final TextEditingController _nombreContactoEmpresaController;
 
-  // SECCIÓN LOGÍSTICA
   String _tipoEvento = 'Evento Corporativo / Empresa';
   DateTime? _selectedDate;
   TimeOfDay? _horaInicio;
@@ -42,13 +42,11 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   late final TextEditingController _lugarController;
   String _tipoEspacio = 'Salón Cerrado';
 
-  // SECCIÓN GASTRONÓMICA
   String _formatoServicio = 'Banquetería Completa (Cóctel + Entrada + Fondo + Postre)';
   final List<String> _preferenciasMenu = [];
   final List<String> _restriccionesAlimentarias = [];
   late final TextEditingController _detallesEspecialesController;
 
-  // ASIGNACIÓN ENCARGADO
   String _encargadoSeleccionado = 'Sin asignar';
   // ignore: prefer_final_fields
   List<String> _listaEncargados = ['Sin asignar', 'Coordinador General', 'María González', 'Juan Pérez', 'Ana Martínez'];
@@ -70,7 +68,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
       _tipoEvento = data['nombreEvento'] ?? 'Seleccionar tipo de evento';
       _selectedDate = (data['fechaEvento'] as Timestamp?)?.toDate();
       
-      if (data['bodyInicio'] != null) {
+      if (data['horaInicio'] != null) {
         final partes = data['horaInicio'].toString().split(':');
         _horaInicio = TimeOfDay(hour: int.parse(partes[0]), minute: int.parse(partes[1]));
       }
@@ -134,6 +132,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
     _detallesEspecialesController.dispose();
     super.dispose();
   }
+  String _formatTimeAMPM(TimeOfDay time) {
+    final int hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final String minute = time.minute.toString().padLeft(2, '0');
+    final String period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
 
   Future<void> _selectDate() async {
     if (widget.readOnly) return;
@@ -152,6 +156,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
     final picked = await showTimePicker(
       context: context,
       initialTime: isInicio ? (_horaInicio ?? const TimeOfDay(hour: 9, minute: 0)) : (_horaTermino ?? const TimeOfDay(hour: 18, minute: 0)),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -213,8 +223,9 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
       'nombreContactoEmpresa': _tipoCliente == 'Empresa' ? _nombreContactoEmpresaController.text.trim() : '',
       'tipoEvento': _tipoEvento,
       'fechaEvento': _selectedDate,
-      'horaInicio': _horaInicio != null ? '${_horaInicio!.hour}:${_horaInicio!.minute}' : '09:00',
-      'horaTermino': _horaTermino != null ? '${_horaTermino!.hour}:${_horaTermino!.minute}' : '18:00',
+      // Firebase lo guarda en 24h internamente (perfecto para la base de datos)
+      'horaInicio': _horaInicio != null ? '${_horaInicio!.hour.toString().padLeft(2, '0')}:${_horaInicio!.minute.toString().padLeft(2, '0')}' : '09:00',
+      'horaTermino': _horaTermino != null ? '${_horaTermino!.hour.toString().padLeft(2, '0')}:${_horaTermino!.minute.toString().padLeft(2, '0')}' : '18:00',
       'cantidadAsistentes': int.tryParse(_asistentesController.text) ?? 10,
       'lugarEvento': _lugarController.text.trim(),
       'tipoEspacio': _tipoEspacio,
@@ -231,6 +242,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
   @override
   Widget build(BuildContext context) {
     const Color verdeEmpresa = Color(0xFF4A4B22);
+    bool cruzaMedianoche = false;
+    if (_horaInicio != null && _horaTermino != null) {
+      final inicioMin = _horaInicio!.hour * 60 + _horaInicio!.minute;
+      final terminoMin = _horaTermino!.hour * 60 + _horaTermino!.minute;
+      if (terminoMin < inicioMin) cruzaMedianoche = true;
+    }
 
     return Form(
       key: _formKey,
@@ -253,7 +270,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
           bool isCurrentStepValid = false;
 
           if (_currentStep == 0) {
-            bool nameValid = Validators.requiredField(_nombreClienteController.text, _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social') == null;
+            String nombre = _nombreClienteController.text.trim();
+            bool nameValid = nombre.isNotEmpty;
+            if (_tipoCliente == 'Persona' && nameValid) {
+              nameValid = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$').hasMatch(nombre);
+            }
+            
             bool rutValid = Validators.rut(_rutController.text) == null;
             bool emailValid = Validators.email(_emailController.text) == null;
             bool phoneValid = Validators.phone(_phoneController.text) == null;
@@ -272,17 +294,30 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
           } else if (_currentStep == 1) {
             bool eventTypeValid = _tipoEvento != 'Seleccionar tipo de evento';
             bool dateValid = Validators.futureDate(_selectedDate) == null;
-            bool guestsValid = _asistentesController.text.isNotEmpty;
+            bool guestsValid = _asistentesController.text.isNotEmpty && int.tryParse(_asistentesController.text) != null && int.parse(_asistentesController.text) > 0;
             bool placeValid = _lugarController.text.isNotEmpty;
             bool spaceValid = _tipoEspacio != 'Seleccionar tipo de espacio';
+            
+            bool timeValid = true;
+            if (_horaInicio == null || _horaTermino == null) {
+              timeValid = false;
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes seleccionar hora de inicio y de término.'), backgroundColor: Colors.red));
+            } else {
+              final inicioMin = _horaInicio!.hour * 60 + _horaInicio!.minute;
+              final terminoMin = _horaTermino!.hour * 60 + _horaTermino!.minute;
+              // Si la duración es literalmente 0 minutos (Empieza a las 15:00 y termina a las 15:00), ahí sí bloqueamos.
+              if (inicioMin == terminoMin) { 
+                timeValid = false;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: La hora de inicio y término no pueden ser exactamente iguales.'), backgroundColor: Colors.red));
+              }
+            }
 
-            isCurrentStepValid = eventTypeValid && dateValid && guestsValid && placeValid && spaceValid;
+            isCurrentStepValid = eventTypeValid && dateValid && guestsValid && placeValid && spaceValid && timeValid;
             
             if (!isCurrentStepValid) _formKey.currentState!.validate();
 
           } else if (_currentStep == 2) {
             isCurrentStepValid = _formatoServicio != 'Seleccionar formato de servicio';
-            
             if (!isCurrentStepValid) _formKey.currentState!.validate();
 
           } else if (_currentStep == 3) {
@@ -296,13 +331,15 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
               _submitForm();
             }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Por favor, completa los campos obligatorios del paso actual.'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 2),
-              ),
-            );
+            if (_currentStep != 1 || (_horaInicio != null && _horaTermino != null && (_horaInicio!.hour * 60 + _horaInicio!.minute) != (_horaTermino!.hour * 60 + _horaTermino!.minute))) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Por favor, corrige los errores en el formulario para avanzar.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
           }
         },
         controlsBuilder: (context, controls) {
@@ -357,21 +394,39 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     ButtonSegment(value: 'Empresa', label: Text('Empresa / Corp'), icon: Icon(Icons.business)),
                   ],
                   selected: {_tipoCliente},
-                  onSelectionChanged: widget.readOnly ? null : (val) => setState(() => _tipoCliente = val.first),
+                  onSelectionChanged: widget.readOnly ? null : (val) {
+                    setState(() {
+                      _tipoCliente = val.first;
+                      _nombreClienteController.clear();
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _nombreClienteController,
                   decoration: InputDecoration(labelText: _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social de la Empresa', border: const OutlineInputBorder()),
-                  validator: (v) => Validators.requiredField(v, _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social'),
                   enabled: !widget.readOnly,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Este campo es obligatorio';
+                    if (_tipoCliente == 'Persona') {
+                      if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$').hasMatch(v)) {
+                        return 'El nombre solo puede contener letras y espacios';
+                      }
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _rutController,
                   decoration: const InputDecoration(labelText: 'RUT (Ej: 12.345.678-9)', border: OutlineInputBorder()),
-                  validator: (v) => Validators.rut(v),
                   enabled: !widget.readOnly,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'El RUT es obligatorio';
+                    String? error = Validators.rut(v);
+                    if (error != null) return 'Formato inválido. Usa puntos y guion';
+                    return null; 
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -495,7 +550,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                           title: Text(
                             _selectedDate == null 
                                 ? 'Seleccionar Fecha' 
-                                : 'Fecha: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                : 'Fecha: ${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.year}'
                           ),
                           trailing: Icon(
                             Icons.calendar_today, 
@@ -527,7 +582,7 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   children: [
                     Expanded(
                       child: ListTile(
-                        title: Text(_horaInicio == null ? 'Hora Inicio' : 'Inicia: ${_horaInicio!.format(context)}'),
+                        title: Text(_horaInicio == null ? 'Hora Inicio' : 'Inicia: ${_formatTimeAMPM(_horaInicio!)}', style: const TextStyle(fontSize: 14)),
                         trailing: const Icon(Icons.access_time),
                         shape: RoundedRectangleBorder(side: BorderSide(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(4)),
                         onTap: () => _selectTime(true),
@@ -536,7 +591,15 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ListTile(
-                        title: Text(_horaTermino == null ? 'Hora Término' : 'Termina: ${_horaTermino!.format(context)}'),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(_horaTermino == null ? 'Hora Término' : 'Termina: ${_formatTimeAMPM(_horaTermino!)}', style: const TextStyle(fontSize: 14)),
+                            if (cruzaMedianoche)
+                              Text('(+1 día)', style: TextStyle(color: Colors.orange.shade800, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                         trailing: const Icon(Icons.access_time),
                         shape: RoundedRectangleBorder(side: BorderSide(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(4)),
                         onTap: () => _selectTime(false),
@@ -549,7 +612,12 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   controller: _asistentesController,
                   decoration: const InputDecoration(labelText: 'Cantidad de Asistentes', border: OutlineInputBorder()),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v!.isEmpty ? 'Ingresa el número de invitados' : null,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Ingresa el número de invitados';
+                    if (int.tryParse(v) == null || int.parse(v) <= 0) return 'Debe ser mayor a 0';
+                    return null;
+                  },
                   enabled: !widget.readOnly,
                 ),
                 const SizedBox(height: 12),

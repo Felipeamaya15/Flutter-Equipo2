@@ -37,6 +37,7 @@ class _LoginPageState extends State<LoginPage> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        await Future.delayed(const Duration(milliseconds: 1500));
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
