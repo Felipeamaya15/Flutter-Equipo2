@@ -39,6 +39,7 @@ class AppRoutes {
           builder: (_) => ConfirmationPage(
             folio: args?['folio']?.toString() ?? '00000',
             email: args?['email']?.toString() ?? 'No disponible',
+            datos: args?['datos'] ?? {}, 
           ),
         );
 

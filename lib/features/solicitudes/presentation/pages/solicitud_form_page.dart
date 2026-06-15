@@ -63,6 +63,7 @@ class _SolicitudFormPageState extends State<SolicitudFormPage> {
         arguments: {
           'folio': folioGenerado,
           'email': datosCotizacion['emailCliente'],
+          'datos': datosCotizacion,
         },
       );
     } catch (e) {

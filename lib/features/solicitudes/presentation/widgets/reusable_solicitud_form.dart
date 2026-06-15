@@ -406,6 +406,10 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   controller: _nombreClienteController,
                   decoration: InputDecoration(labelText: _tipoCliente == 'Persona' ? 'Nombre Completo' : 'Razón Social de la Empresa', border: const OutlineInputBorder()),
                   enabled: !widget.readOnly,
+                  inputFormatters: [
+                    if (_tipoCliente == 'Persona')
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                  ],
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Este campo es obligatorio';
                     if (_tipoCliente == 'Persona') {
@@ -421,6 +425,9 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                   controller: _rutController,
                   decoration: const InputDecoration(labelText: 'RUT (Ej: 12.345.678-9)', border: OutlineInputBorder()),
                   enabled: !widget.readOnly,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9kK\.\-]')),
+                  ],
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'El RUT es obligatorio';
                     String? error = Validators.rut(v);
@@ -456,7 +463,9 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         ),
-                        keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+                        ],
                         validator: (v) => Validators.phone(v),
                         enabled: !widget.readOnly,
                       ),
@@ -469,6 +478,9 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     controller: _giroController, 
                     decoration: const InputDecoration(labelText: 'Giro Comercial (SII)', border: OutlineInputBorder()), 
                     enabled: !widget.readOnly,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]')),
+                    ],
                     validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Giro Comercial') : null,
                   ),
                   const SizedBox(height: 12),
@@ -483,6 +495,9 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                     controller: _nombreContactoEmpresaController,
                     decoration: const InputDecoration(labelText: 'Nombre del Coordinador/Contacto', border: OutlineInputBorder()), 
                     enabled: !widget.readOnly,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                    ],
                     validator: (v) => _tipoCliente == 'Empresa' ? Validators.requiredField(v, 'Nombre del Coordinador') : null,
                   ),
                 ]
@@ -624,7 +639,11 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                 TextFormField(
                   controller: _lugarController, 
                   decoration: const InputDecoration(labelText: 'Lugar / Dirección del Evento', border: OutlineInputBorder()), 
-                  validator: (v) => v!.isEmpty ? 'Lugar obligatorio' : null, 
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Lugar obligatorio';
+                    if (v.trim().length < 5) return 'Debe tener al menos 5 caracteres';
+                    return null;
+                  },
                   enabled: !widget.readOnly,
                 ),
                 const SizedBox(height: 12),
