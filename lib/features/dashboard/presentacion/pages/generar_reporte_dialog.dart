@@ -173,9 +173,9 @@ class _GenerarReporteDialogState extends State<GenerarReporteDialog> {
         ),
       );
 
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'Registro_Eventos_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'Reporte_Eventos_${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
 
       if (!mounted) return;

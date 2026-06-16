@@ -353,14 +353,12 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   }
 
   Widget _buildProximosEventosBlock(List<QueryDocumentSnapshot> docs) {
-    // 1. Filtrar eventos que no estén completados y que tengan fecha asignada
     final eventosFuturos = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final String estado = (data['estado'] ?? '').toString().trim().toLowerCase();
       return estado != 'completado' && data['fechaEvento'] != null;
     }).toList();
 
-    // 2. Ordenar cronológicamente (el más próximo primero)
     eventosFuturos.sort((a, b) {
       final Timestamp fechaA = (a.data() as Map<String, dynamic>)['fechaEvento'] as Timestamp;
       final Timestamp fechaB = (b.data() as Map<String, dynamic>)['fechaEvento'] as Timestamp;
@@ -392,19 +390,17 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                 final String nombreEvento = data['nombreEvento'] ?? 'Logística de Evento';
                 final String emailCliente = data['emailCliente'] ?? 'Sin correo';
                 
-                // Formateo de fecha (Ej: 28/06) y hora (Ej: 15:30)
                 final String diaMes = "${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}";
                 final String horaStr = "${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}";
 
-                // Lógica de colores según qué tan pronto es el evento
                 final int diasFaltantes = fecha.difference(DateTime.now()).inDays;
                 Color dotColor = primaryColor;
                 if (diasFaltantes < 0) {
-                  dotColor = Colors.redAccent; // Atrasado o en curso
+                  dotColor = Colors.redAccent; 
                 } else if (diasFaltantes <= 3) {
-                  dotColor = Colors.orange; // Muy próximo
+                  dotColor = Colors.orange; 
                 } else {
-                  dotColor = Colors.teal; // Aún hay tiempo
+                  dotColor = Colors.teal; 
                 }
 
                 return _buildNuevoAgendaItem(
@@ -467,6 +463,21 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   }
 
   Widget _buildSolicitudesTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
+    List<QueryDocumentSnapshot> solicitudesOrdenadas = List.from(docs);
+
+    solicitudesOrdenadas.sort((a, b) {
+      final dataA = a.data() as Map<String, dynamic>;
+      final dataB = b.data() as Map<String, dynamic>;
+
+      final Timestamp? fechaA = dataA['fechaEvento'] as Timestamp?;
+      final Timestamp? fechaB = dataB['fechaEvento'] as Timestamp?;
+
+      if (fechaA == null && fechaB == null) return 0;
+      if (fechaA == null) return 1;
+      if (fechaB == null) return -1;
+      return fechaA.compareTo(fechaB);
+    });
+
     return Padding(
       padding: EdgeInsets.all(paddingValue),
       child: Column(
@@ -490,7 +501,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: docs.isEmpty
+            child: solicitudesOrdenadas.isEmpty
                 ? const Center(child: Text('No existen solicitudes registradas.', style: TextStyle(fontSize: 16)))
                 : LayoutBuilder(
                     builder: (context, constraints) {
@@ -501,19 +512,19 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 450, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 2.3,
                           ),
-                          itemCount: docs.length,
+                          itemCount: solicitudesOrdenadas.length,
                           itemBuilder: (context, index) {
-                            return _buildSolicitudCard(docs[index], context);
+                            return _buildSolicitudCard(solicitudesOrdenadas[index], context);
                           },
                         );
                       }
                       return ListView.separated(
                         padding: EdgeInsets.zero,
                         physics: const BouncingScrollPhysics(),
-                        itemCount: docs.length,
+                        itemCount: solicitudesOrdenadas.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
-                          return _buildSolicitudCard(docs[index], context);
+                          return _buildSolicitudCard(solicitudesOrdenadas[index], context);
                         },
                       );
                     },
@@ -523,7 +534,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
       ),
     );
   }
-
   Widget _buildAgendaTab(List<QueryDocumentSnapshot> docs, double paddingValue) {
     final eventosConFecha = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
@@ -781,23 +791,35 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     );
   }
 
-  void _mostrarConfirmacionLogout(BuildContext context) {
+ void _mostrarConfirmacionLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      barrierDismissible: false, 
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('¿Cerrar Sesión?', style: TextStyle(fontWeight: FontWeight.bold)),
         content: const Text('Tendrás que volver a ingresar tus credenciales para acceder al panel.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
+              Navigator.pop(dialogContext);
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (loadingContext) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              );
+              await Future.delayed(const Duration(milliseconds: 500));
               await FirebaseAuth.instance.signOut();
+              
               if (!context.mounted) return;
+              Navigator.of(context, rootNavigator: true).pop();
               Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
             },
             child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),

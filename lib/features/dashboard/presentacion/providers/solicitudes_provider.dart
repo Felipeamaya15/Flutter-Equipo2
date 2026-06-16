@@ -1,5 +1,7 @@
+import 'dart:async'; // NUEVO: Para poder apagar la conexión
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // NUEVO: Para escuchar las sesiones
 
 class SolicitudesProvider extends ChangeNotifier {
   List<QueryDocumentSnapshot> _solicitudes = [];
@@ -9,6 +11,8 @@ class SolicitudesProvider extends ChangeNotifier {
   QueryDocumentSnapshot? _solicitudSeleccionada;
 
   bool _ocultarCompletadas = true;
+
+  StreamSubscription<QuerySnapshot>? _solicitudesSubscription;
 
   List<QueryDocumentSnapshot> get solicitudes => _solicitudes;
   bool get isLoading => _isLoading;
@@ -22,7 +26,6 @@ class SolicitudesProvider extends ChangeNotifier {
       return _solicitudes.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
         final String estado = (data['estado'] ?? 'Pendiente').toString().trim().toLowerCase();
-        // Remueve automáticamente de la vista las que están completadas
         return estado != 'completado';
       }).toList();
     }
@@ -43,13 +46,26 @@ class SolicitudesProvider extends ChangeNotifier {
   }
 
   SolicitudesProvider() {
-    _initStream();
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        _iniciarConexionLimpia();
+      } else {
+        _apagarConexion();
+      }
+    });
   }
 
-  void _initStream() {
-    FirebaseFirestore.instance.collection('solicitudes').snapshots().listen(
+  void _iniciarConexionLimpia() {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+
+    _solicitudesSubscription?.cancel();
+
+    _solicitudesSubscription = FirebaseFirestore.instance.collection('solicitudes').snapshots().listen(
       (snapshot) {
         _solicitudes = snapshot.docs;
+        _error = null; 
         _isLoading = false;
         notifyListeners();
       },
@@ -59,6 +75,19 @@ class SolicitudesProvider extends ChangeNotifier {
         notifyListeners();
       }
     );
+  }
+
+  void _apagarConexion() {
+    _solicitudesSubscription?.cancel();
+    _solicitudes = [];
+    _error = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _solicitudesSubscription?.cancel(); 
+    super.dispose();
   }
 
   void seleccionarSolicitud(QueryDocumentSnapshot? doc) {

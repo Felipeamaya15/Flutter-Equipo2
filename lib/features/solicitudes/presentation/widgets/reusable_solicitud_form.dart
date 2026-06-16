@@ -458,12 +458,15 @@ class _ReusableSolicitudFormState extends State<ReusableSolicitudForm> {
                       flex: 5,
                       child: TextFormField(
                         controller: _phoneController,
+                        maxLength: 9, // Aplica el tope físico máximo de 9 dígitos
                         decoration: const InputDecoration(
                           labelText: 'Teléfono', 
+                          hintText: 'Ej: 912345678', // Ejemplo visual sugerido
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          counterText: '', // Esto oculta completamente el contador "0/9"
                         ),
-                          inputFormatters: [
+                        inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
                         ],
                         validator: (v) => Validators.phone(v),
