@@ -1,11 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class CotizacionDocumentView extends StatelessWidget {
   final DocumentSnapshot solicitudDoc;
 
   const CotizacionDocumentView({super.key, required this.solicitudDoc});
+  
+  Future<void> _generarYDescargarPDF(BuildContext context, Map<String, dynamic> datos, String folio, String fechaStr, String encargado) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Generando documento PDF...')),
+      );
+
+      final doc = pw.Document();
+
+      String preferenciasMenu = 'Ninguna';
+      if (datos['preferenciasMenu'] != null) {
+        preferenciasMenu = (datos['preferenciasMenu'] as List<dynamic>).join(', ');
+      }
+
+      String restricciones = 'Ninguna';
+      if (datos['restriccionesAlimentarias'] != null) {
+        restricciones = (datos['restriccionesAlimentarias'] as List<dynamic>).join(', ');
+      }
+
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Center(
+                  child: pw.Text('Productora Intercultural SpA', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF4A4B22))),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Center(
+                  child: pw.Text('Detalle de Solicitud de Cotización', style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey700)),
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text('Folio de Seguimiento: #$folio', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                pw.Text('Estado Actual: ${datos['estado'] ?? 'Pendiente'}', style: pw.TextStyle(fontSize: 12)),
+                pw.Divider(color: PdfColors.grey400),
+                pw.SizedBox(height: 10),
+
+                pw.Text('1. DATOS DEL CLIENTE', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                pw.SizedBox(height: 5),
+                pw.Text('Tipo de Cliente: ${datos['tipoCliente'] ?? 'No especificado'}'),
+                pw.Text('Nombre / Razón Social: ${datos['nombreCliente'] ?? 'No especificado'}'),
+                pw.Text('RUT: ${datos['rutCliente'] ?? 'No especificado'}'),
+                pw.Text('Correo Electrónico: ${datos['emailCliente'] ?? 'No especificado'}'),
+                pw.Text('Teléfono: ${datos['telefonoCliente'] ?? 'No especificado'}'),
+                pw.SizedBox(height: 15),
+
+                pw.Text('2. LOGÍSTICA DEL EVENTO', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                pw.SizedBox(height: 5),
+                pw.Text('Tipo de Evento: ${datos['nombreEvento'] ?? 'No especificado'}'),
+                pw.Text('Fecha Programada: $fechaStr'),
+                pw.Text('Horario: ${datos['horaInicio'] ?? '--:--'} a ${datos['horaTermino'] ?? '--:--'}'),
+                pw.Text('Cantidad de Asistentes: ${datos['cantidadAsistentes'] ?? '0'}'),
+                pw.Text('Lugar: ${datos['lugarEvento'] ?? 'No especificado'}'),
+                pw.Text('Tipo de Espacio: ${datos['tipoEspacio'] ?? 'No especificado'}'),
+                pw.SizedBox(height: 15),
+
+                pw.Text('3. PROPUESTA GASTRONÓMICA', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                pw.SizedBox(height: 5),
+                pw.Text('Formato de Servicio: ${datos['formatoServicio'] ?? 'No especificado'}'),
+                pw.Text('Preferencias de Menú: $preferenciasMenu'),
+                pw.Text('Restricciones Alimentarias: $restricciones'),
+                if (datos['detallesEspeciales'] != null && datos['detallesEspeciales'].toString().trim().isNotEmpty) ...[
+                  pw.SizedBox(height: 5),
+                  pw.Text('Detalles Especiales:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.Text('${datos['detallesEspeciales']}'),
+                ],
+                pw.SizedBox(height: 20),
+                pw.Divider(color: PdfColors.grey400),
+                pw.Text('Ejecutivo Asignado: $encargado', style: pw.TextStyle(fontSize: 11, color: PdfColors.grey800)),
+              ],
+            );
+          },
+        ),
+      );
+
+      await Printing.sharePdf(
+        bytes: await doc.save(),
+        filename: 'Cotizacion_$folio.pdf',
+      );
+      
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al crear PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +128,11 @@ class CotizacionDocumentView extends StatelessWidget {
     }
 
     String fechaFormateada = 'No especificada';
+    String fechaCortaParaPDF = 'No definida';
     if (data['fechaEvento'] != null && data['fechaEvento'] is Timestamp) {
       DateTime date = (data['fechaEvento'] as Timestamp).toDate();
       fechaFormateada = DateFormat('dd \'de\' MMMM, yyyy', 'es').format(date);
+      fechaCortaParaPDF = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
     }
 
     const Color primaryColor = Color(0xFF4A4B22);
@@ -65,7 +163,6 @@ class CotizacionDocumentView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min, 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ================= ENCABEZADO TIPO DOCUMENTO =================
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: const BoxDecoration(
@@ -138,7 +235,6 @@ class CotizacionDocumentView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // =================  DATOS DEL CLIENTE =================
                       _buildSectionHeader(Icons.person_outline, 'Información del Cliente', primaryColor),
                       const SizedBox(height: 12),
                       if (tipoCliente == 'Empresa / Corp') ...[
@@ -153,10 +249,7 @@ class CotizacionDocumentView extends StatelessWidget {
                       ],
                       _buildDocumentRow('Correo Electrónico', data['emailCliente'], textDark, labelColor),
                       _buildDocumentRow('Teléfono Móvil', data['telefonoCliente'], textDark, labelColor),
-          
                       const Divider(height: 40, thickness: 1, color: Color(0xFFEFEFEA)),
-          
-                      // =================  LOGÍSTICA DEL EVENTO =================
                       _buildSectionHeader(Icons.calendar_today_outlined, 'Detalles de la Logística', primaryColor),
                       const SizedBox(height: 12),
                       _buildDocumentRow('Tipo de Evento', data['nombreEvento'], textDark, labelColor),
@@ -165,10 +258,7 @@ class CotizacionDocumentView extends StatelessWidget {
                       _buildDocumentRow('Cantidad Asistentes', '${data['cantidadAsistentes'] ?? 0} personas', textDark, labelColor),
                       _buildDocumentRow('Lugar/Ubicación', data['lugarEvento'], textDark, labelColor),
                       _buildDocumentRow('Entorno / Espacio', data['tipoEspacio'], textDark, labelColor),
-          
                       const Divider(height: 40, thickness: 1, color: Color(0xFFEFEFEA)),
-          
-                      // ================= EXPERIENCIA GASTRONÓMICA =================
                       _buildSectionHeader(Icons.restaurant_menu_outlined, 'Propuesta Gastronómica', primaryColor),
                       const SizedBox(height: 12),
                       _buildDocumentRow('Formato de Servicio', data['formatoServicio'], textDark, labelColor),
@@ -180,7 +270,6 @@ class CotizacionDocumentView extends StatelessWidget {
           
                       const Divider(height: 40, thickness: 1, color: Color(0xFFEFEFEA)),
           
-                      // ================= CONTROL INTERNO =================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -195,7 +284,7 @@ class CotizacionDocumentView extends StatelessWidget {
                               Text(
                                 encargado,
                                 style: const TextStyle(color: textDark, fontSize: 13, fontWeight: FontWeight.bold),
-                                                      ),
+                              ),
                             ],
                           ),
                           Text(
@@ -203,6 +292,22 @@ class CotizacionDocumentView extends StatelessWidget {
                             style: TextStyle(color: labelColor.withValues(alpha: 0.6), fontSize: 11, fontStyle: FontStyle.italic),
                           ),
                         ],
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _generarYDescargarPDF(context, data, folio, fechaCortaParaPDF, encargado),
+                          icon: const Icon(Icons.download_rounded),
+                          label: const Text('Descargar Copia en PDF', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -277,7 +382,6 @@ class CotizacionDocumentView extends StatelessWidget {
     return data.toString();
   }
 }
-
 
 class InvalidPattern {
   static bool match(String s) => RegExp(r'[a-zA-Z]').hasMatch(s);
