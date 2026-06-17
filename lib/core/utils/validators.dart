@@ -53,4 +53,50 @@ class Validators {
 
     return null;
   }
+
+  static String? rut(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'El RUT es obligatorio para la facturación';
+    }
+    
+    String cleanRut = value.trim().replaceAll('.', '').replaceAll('-', '').toUpperCase();
+
+    if (cleanRut.length < 8 || cleanRut.length > 9) {
+      return 'El RUT ingresado no tiene un largo válido';
+    }
+
+    String dvIngresado = cleanRut.substring(cleanRut.length - 1);
+    String cuerpoStr = cleanRut.substring(0, cleanRut.length - 1);
+
+    int? cuerpo = int.tryParse(cuerpoStr);
+    if (cuerpo == null) {
+      return 'El cuerpo del RUT debe contener solo números';
+    }
+
+    int suma = 0;
+    int multiplicador = 2;
+
+    for (int i = cuerpoStr.length - 1; i >= 0; i--) {
+      suma += int.parse(cuerpoStr[i]) * multiplicador;
+      multiplicador = multiplicador == 7 ? 2 : multiplicador + 1;
+    }
+
+    int resto = suma % 11;
+    int resultadoDv = 11 - resto;
+
+    String dvEsperado;
+    if (resultadoDv == 11) {
+      dvEsperado = '0';
+    } else if (resultadoDv == 10) {
+      dvEsperado = 'K';
+    } else {
+      dvEsperado = resultadoDv.toString();
+    }
+
+    if (dvIngresado != dvEsperado) {
+      return 'El RUT ingresado es inválido (Dígito verificador incorrecto)';
+    }
+
+    return null;
+  }
 }

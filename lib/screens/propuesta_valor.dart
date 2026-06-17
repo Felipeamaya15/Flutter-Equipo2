@@ -16,7 +16,7 @@ class PropuestaValorScreen extends StatelessWidget {
               Center(
                 child: Image.asset(
                   'assets/images/logo_sobre_nosotros.png',
-                  width: MediaQuery.of(context).size.width * 0.65, 
+                  width: MediaQuery.of(context).size.width * 0.65,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -97,7 +97,7 @@ class PropuestaValorScreen extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            'assets/images/diploma_gastronomia.jpg', 
+                            'assets/images/diploma_gastronomia.jpg',
                             width: 70,
                             height: 90,
                             fit: BoxFit.cover,
@@ -112,18 +112,17 @@ class PropuestaValorScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Chef María Jiménez',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Certificada por ACNUR y la Fundación Gastronomía Social en cocina intercultural.',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.black54,
-                              height: 1.4,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.black54, height: 1.4),
                           ),
                         ],
                       ),

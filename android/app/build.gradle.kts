@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_equipo2"
+    namespace = "com.example.flutter_application"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
