@@ -18,7 +18,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // AQUÍ ESTÁ EL MÉTODO QUE VS CODE ESTÁ BUSCANDO
   Future<void> actualizarContrasenaTrabajador(String nuevaClave) async {
     if (nuevaClave.trim().length < 6) {
       throw 'La nueva contraseña debe tener al menos 6 caracteres.';
