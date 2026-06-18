@@ -169,7 +169,7 @@ Para listar dispositivos disponibles:
 Para acceder a la app, usar algunas de las cuentas registradas en Firebase Authentication:
 
 |          Correo            |    Contraseña   |
-|============================|=================|
+|----------------------------|-----------------|
 | developer@productora.com   | 123456          |
 | trabajador3@productora.com | 123456          |
 
@@ -247,7 +247,7 @@ lib/
 ### Funcionalidades Principales
 
 |     Pantalla    |                       Descripción                                   |
-|=================|=====================================================================|
+|-----------------|---------------------------------------------------------------------|
 |      Login      | Acceso para trabajadores con correo y contraseña vía Firebase Auth  | 
 |    Dashboard    | Muestra solicitudes activas, eventos de la semana y próximos eventos|
 |   Solicitudes   | Bandeja con todas las solicitudes; permite cambiar su estado        |
