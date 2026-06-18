@@ -178,6 +178,7 @@ Para acceder a la app, usar algunas de las cuentas registradas en Firebase Authe
 
 ### Estructura del Proyecto
 
+```
 lib/
 ├── core/
 │   ├── firebase/
@@ -239,7 +240,7 @@ lib/
 │
 ├── firebase_options.dart                 # Configuración de Firebase por plataforma
 └── main.dart                             # Punto de entrada: inicializa Firebase, providers y tema de la app
-
+```
 
 
 ----------------------------------------------------------------------------------------
