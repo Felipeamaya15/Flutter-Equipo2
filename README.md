@@ -110,7 +110,7 @@ El proyecto ya viene configurado con las credenciales de Firebase. Los archivos 
 ### Datos del proyecto Firebase
 
 |        Campo       |           Valor                                |
-|====================|================================================|
+|--------------------|------------------------------------------------|
 |     Project ID     | `aplicaciones-moviles-cc5a6`                   | 
 |   App ID Android   | `1:613070071056:android:5b83679f9b1f91da8ef195`| 
 |  App ID iOS/macOS  | `1:613070071056:ios:fb2cd8389698105c8ef195`    |
@@ -242,7 +242,7 @@ lib/
 
 
 
---------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
 
 ### Funcionalidades Principales
 
