@@ -228,7 +228,7 @@ lib/
 │       │   │   ├── solicitud.dart                    # Entidad base de solicitud (id, email, teléfono, fecha, estado)
 │       │   │   └── cotizacion.dart                   # Entidad cotización con campos extendidos (evento, encargado)
 │       │   └── repositories/
-│       │       └── solicitud_repository.dart         # Contrato (interfaz) del repositorio de solicitudes
+│       │       └── solicitud_repository.dart         # Interfaz del repositorio de solicitudes
 │       └── presentation/
 │           ├── pages/
 │           │   ├── login_page.dart                   # Pantalla de inicio de sesión con recuperación de contraseña
